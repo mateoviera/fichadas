@@ -1,6 +1,6 @@
 import { analyzeEmployee, summarize, ISSUE_LABELS, INFO_LABELS } from './engine.js';
 import { punchesByLegajo } from './store.js';
-import { DAY, keyToTs, dateKey, fmtTime, fmtDate, WEEKDAYS_SHORT, weekday } from './time.js';
+import { DAY, keyToTs, dateKey, fmtTime, fmtDate, fmtDuration, WEEKDAYS_SHORT, weekday } from './time.js';
 
 export const STATUS_FILTERS = [
   { id: 'todos', label: 'Todos' },
@@ -77,31 +77,46 @@ export function statusText(r) {
   return parts.filter(Boolean).join(' · ');
 }
 
+const GENERIC_NOTES = new Set(['Manual', 'Fichada manual', 'Salida completada desde el reporte', 'Ingreso completado desde el reporte']);
+
+/** Observaciones de un día: feriado, licencia, extra, fichadas manuales e intermedias. */
+export function rowObs(r) {
+  return [
+    ...r.info.filter((i) => i !== 'sin_horario').map((i) => (i === 'feriado' ? `Feriado: ${r.holidayName}` : i === 'licencia' ? `Licencia: ${r.leaveType}` : i === 'extra' ? `Extra +${r.extraMin} min` : INFO_LABELS[i])),
+    r.entry?.m && !GENERIC_NOTES.has(r.entry.m) ? `Ingreso manual: ${r.entry.m}` : '',
+    r.exit?.m && !GENERIC_NOTES.has(r.exit.m) ? `Egreso manual: ${r.exit.m}` : '',
+    r.mids.length ? `Fichadas intermedias: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}` : '',
+  ].filter(Boolean).join(' · ');
+}
+
+/** Minutos con signo: +1:30 / -8:00 */
+export function fmtSigned(min) {
+  if (!min) return '0:00';
+  return (min > 0 ? '+' : '') + fmtDuration(min);
+}
+
 export function buildExportSheets(report, state) {
   const estName = (id) => state.establishments[id]?.name || '';
   const detail = [[
     'Legajo', 'Nombre', 'Sector', 'Horario', 'Establecimiento', 'Fecha', 'Día', 'Turno esperado', 'Ingreso', 'Egreso',
-    'Fecha egreso', 'Horas trabajadas', 'Horas esperadas', 'Tarde (min)', 'Salida anticipada (min)', 'Extra (min)', 'Estado', 'Observaciones',
+    'Fecha egreso', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Tarde (min)', 'Salida anticipada (min)', 'Extra (min)', 'Estado', 'Observaciones',
   ]];
   const summary = [[
     'Legajo', 'Nombre', 'Sector', 'Horario', 'Turnos', 'Cumplimiento %', 'Llegadas tarde', 'Minutos tarde',
-    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas', 'Horas esperadas', 'Horas extra',
+    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Saldo (h)', 'Horas extra',
   ]];
   const h = (m) => Math.round((m / 60) * 100) / 100;
   for (const { emp, sch, rows, summary: s } of report.list) {
     summary.push([
       Number(emp.legajo), emp.name, emp.sector, sch?.name || 'Sin horario', s.turnos, s.cumplimiento ?? '', s.tarde, s.tardeMin,
-      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.expected), h(s.extra),
+      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.sinFichada), h(s.expected), s.expected ? h(s.saldo) : '', h(s.extra),
     ]);
     for (const r of rows) {
-      const obs = [
-        ...r.info.filter((i) => i !== 'sin_horario').map((i) => (i === 'feriado' ? `Feriado: ${r.holidayName}` : i === 'licencia' ? `Licencia: ${r.leaveType}` : INFO_LABELS[i])),
-        r.mids.length ? `Fichadas intermedias: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}` : '',
-      ].filter(Boolean).join(' · ');
+      const obs = rowObs(r);
       detail.push([
         Number(emp.legajo), emp.name, emp.sector, sch?.name || 'Sin horario', estName(r.est), fmtDate(r.date), WEEKDAYS_SHORT[weekday(r.date)],
         r.inst ? r.inst.label : '', r.entry ? fmtTime(r.entry.t) : '', r.exit ? fmtTime(r.exit.t) : '',
-        r.exit ? fmtDate(dateKey(r.exit.t)) : '', r.workedMin ? h(r.workedMin) : '', r.expectedMin ? h(r.expectedMin) : '',
+        r.exit ? fmtDate(dateKey(r.exit.t)) : '', r.workedMin ? h(r.workedMin) : '', r.missingMin ? h(r.missingMin) : '', r.expectedMin ? h(r.expectedMin) : '',
         r.lateMin || '', r.earlyMin || '', r.extraMin || '', statusText(r), obs,
       ]);
     }

@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useStore, monthsInData } from '../lib/store.js';
-import { computeReport, STATUS_FILTERS, buildExportSheets } from '../lib/report.js';
-import { fmtTime, fmtDateShort, fmtDuration, dateKey } from '../lib/time.js';
+import { useStore, monthsInData, addManualPunch } from '../lib/store.js';
+import { computeReport, STATUS_FILTERS, buildExportSheets, fmtSigned } from '../lib/report.js';
+import { fmtTime, fmtDateShort, fmtDuration, dateKey, keyToTs, hmToMin, DAY } from '../lib/time.js';
 import { buildXlsx } from '../lib/xlsx.js';
 import { download, toCSV } from '../lib/io.js';
-import { RowPills, EstSelect, useToast } from '../components/ui.jsx';
+import { RowPills, EstSelect, useToast, TimeInput } from '../components/ui.jsx';
 import EmployeeDrawer from './EmployeeDrawer.jsx';
+import Planilla from './Planilla.jsx';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const monthLabel = (m) => `${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
@@ -58,6 +59,25 @@ export default function Reporte() {
   const exportCsv = () => { download(`${fileBase}.csv`, toCSV(buildExportSheets(report, state)[1].rows), 'text/csv'); toast('CSV generado'); };
   const printPdf = () => { setOpen(new Set(report.list.map((x) => x.emp.legajo))); setTimeout(() => window.print(), 120); };
 
+  // Planillas por persona: se montan solo para imprimir y se desmontan al cerrar el diálogo.
+  const [sheets, setSheets] = useState(null);
+  useEffect(() => {
+    if (!sheets) return;
+    document.body.classList.add('printing-sheets');
+    const done = () => setSheets(null);
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => window.print(), 150);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); document.body.classList.remove('printing-sheets'); };
+  }, [sheets]);
+
+  const STATUS_LABEL = Object.fromEntries(STATUS_FILTERS.map((s) => [s.id, s.label]));
+  const printInfo = [
+    `Generado el ${new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}`,
+    sector && `Sector: ${sector}`,
+    status !== 'todos' && `Estado: ${STATUS_LABEL[status]}`,
+    q.trim() && `Búsqueda: «${q.trim()}»`,
+  ].filter(Boolean).join(' · ');
+
   if (!state.punches.length) {
     return (
       <div className="panel empty">
@@ -73,11 +93,13 @@ export default function Reporte() {
         <div>
           <h2>Control de fichadas</h2>
           <p>{from && to ? `${fmtDateShort(from)} al ${fmtDateShort(to)}` : 'Elegí un período'} · {estId ? state.establishments[estId]?.name : 'todos los establecimientos'}</p>
+          <p className="print-only small">{printInfo}</p>
         </div>
         <div className="row no-print">
           <button className="btn" onClick={exportXlsx} disabled={!report.list.length}>Excel</button>
           <button className="btn" onClick={exportCsv} disabled={!report.list.length}>CSV</button>
-          <button className="btn" onClick={printPdf} disabled={!report.list.length}>Imprimir / PDF</button>
+          <button className="btn" onClick={printPdf} disabled={!report.list.length} title="Listado de todas las personas filtradas">Imprimir listado</button>
+          <button className="btn" onClick={() => setSheets(report.list)} disabled={!report.list.length} title="Una hoja por persona, con totales y firmas">Planillas por persona</button>
         </div>
       </div>
 
@@ -121,6 +143,9 @@ export default function Reporte() {
           <Stat label="Incompletos" value={t.incompleto} tone={t.incompleto ? 'bad' : ''} onClick={() => setStatus(status === 'incompleto' ? 'todos' : 'incompleto')} pressed={status === 'incompleto'} />
           <Stat label="Ausencias" value={t.ausente} tone={t.ausente ? 'bad' : ''} onClick={() => setStatus(status === 'ausente' ? 'todos' : 'ausente')} pressed={status === 'ausente'} />
           <Stat label="Horas trabajadas" value={fmtDuration(t.worked)} />
+          <Stat label="Horas sin fichada" value={fmtDuration(t.sinFichada)} tone={t.sinFichada ? 'bad' : ''} onClick={() => setStatus(status === 'incompleto' ? 'todos' : 'incompleto')} pressed={status === 'incompleto'} />
+          {t.expected > 0 && <Stat label="Horas esperadas" value={fmtDuration(t.expected)} />}
+          {t.expected > 0 && <Stat label="Saldo (trab. − esp.)" value={fmtSigned(t.saldo)} tone={t.saldo < 0 ? 'bad' : 'ok'} />}
         </div>
       )}
 
@@ -138,11 +163,12 @@ export default function Reporte() {
         </div>
         {!report.list.length && <div className="empty">No hay turnos que coincidan con los filtros.</div>}
         {report.list.map((x) => (
-          <EmployeeBlock key={x.emp.legajo} x={x} open={open.has(x.emp.legajo)} onToggle={() => toggle(x.emp.legajo)} onDetail={() => setDetail(x.emp.legajo)} state={state} />
+          <EmployeeBlock key={x.emp.legajo} x={x} open={open.has(x.emp.legajo)} onToggle={() => toggle(x.emp.legajo)} onDetail={() => setDetail(x.emp.legajo)} onPrint={() => setSheets([x])} state={state} />
         ))}
       </div>
 
       {detail && <EmployeeDrawer legajo={detail} onClose={() => setDetail(null)} />}
+      {sheets && <Planilla items={sheets} state={state} from={from} to={to} estId={estId} />}
     </>
   );
 }
@@ -157,7 +183,7 @@ function Stat({ label, value, tone = '', onClick, pressed }) {
   );
 }
 
-function EmployeeBlock({ x, open, onToggle, onDetail, state }) {
+function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
   const { emp, sch, rows, summary: s } = x;
   const issues = s.tarde + s.anticipada + s.incompleto + s.ausente;
   return (
@@ -182,11 +208,23 @@ function EmployeeBlock({ x, open, onToggle, onDetail, state }) {
           {s.incompleto > 0 && <span className="pill bad">{s.incompleto} incomp.</span>}
           {s.ausente > 0 && <span className="pill bad">{s.ausente} ausente</span>}
           {!issues && sch && <span className="pill ok">Sin incidencias</span>}
-          <span className="num muted" title="Horas trabajadas">{fmtDuration(s.worked)} h</span>
+          <span className="num muted" title={s.expected ? 'Horas trabajadas / esperadas' : 'Horas trabajadas (con ingreso y egreso fichados)'}>
+            {fmtDuration(s.worked)}{s.expected > 0 && ` / ${fmtDuration(s.expected)}`} h
+          </span>
+          {s.sinFichada > 0 && <span className="num bad-text" title="Horas de turnos sin ingreso o sin egreso fichado: no suman a las trabajadas">{fmtDuration(s.sinFichada)} h sin fichada</span>}
         </span>
       </button>
       {open && (
         <div className="emp-body">
+          <div className="emp-totals">
+            <span>Trabajadas <b>{fmtDuration(s.worked)}</b></span>
+            {s.sinFichada > 0 && <span>Sin fichada <b className="bad-text">{fmtDuration(s.sinFichada)}</b></span>}
+            {s.expected > 0 && <span>Esperadas <b>{fmtDuration(s.expected)}</b></span>}
+            {s.expected > 0 && <span>Saldo <b className={s.saldo < 0 ? 'bad-text' : 'ok-text'}>{fmtSigned(s.saldo)}</b></span>}
+            {s.extra > 0 && <span>Extra <b>{fmtDuration(s.extra)}</b></span>}
+            {s.tardeMin > 0 && <span>Min. tarde <b>{s.tardeMin}</b></span>}
+            {s.anticipadaMin > 0 && <span>Min. anticipados <b>{s.anticipadaMin}</b></span>}
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -211,8 +249,16 @@ function EmployeeBlock({ x, open, onToggle, onDetail, state }) {
                       {r.exit?.m && <span className="plus1" title={r.exit.m}>M</span>}
                       {r.mids.length > 0 && <span className="muted small" title={`Fichadas intermedias: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}`}> · {r.mids.length} intermedia{r.mids.length > 1 ? 's' : ''}</span>}
                     </td>
-                    <td className="num right">{r.workedMin ? fmtDuration(r.workedMin) : ''}</td>
-                    <td><RowPills r={r} /></td>
+                    <td className="num right nowrap">
+                      {r.workedMin ? fmtDuration(r.workedMin) : ''}
+                      {r.missingMin > 0 && <span className="bad-text" title="Horas del turno sin fichada: no suman a las trabajadas">{fmtDuration(r.missingMin)} sin fichada</span>}
+                    </td>
+                    <td>
+                      <span className="row" style={{ gap: 6 }}>
+                        <RowPills r={r} />
+                        <CompleteMissing r={r} legajo={emp.legajo} />
+                      </span>
+                    </td>
                     <td className="muted small nowrap">{state.establishments[r.est]?.name || ''}</td>
                   </tr>
                 ))}
@@ -221,10 +267,53 @@ function EmployeeBlock({ x, open, onToggle, onDetail, state }) {
           </div>
           <div className="row no-print" style={{ padding: '8px 16px 0 34px' }}>
             <button className="btn sm" onClick={onDetail}>Horario, licencias y fichadas manuales</button>
+            <button className="btn sm" onClick={onPrint}>Imprimir planilla</button>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Botón para completar la fichada que falta (ingreso o egreso) con la hora del turno.
+ * Agrega una fichada manual: el día queda marcado con «M» y se puede quitar desde el detalle.
+ */
+function CompleteMissing({ r, legajo }) {
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const kind = !r.inst ? null : r.entry && !r.exit ? 'exit' : !r.entry && r.exit ? 'entry' : null;
+  const defTs = kind === 'exit' ? r.inst.end : kind === 'entry' ? r.inst.start : 0;
+  const [hm, setHm] = useState(defTs ? fmtTime(defTs) : '');
+  if (!kind) return null;
+  const label = kind === 'exit' ? 'salida' : 'ingreso';
+  const other = kind === 'exit' ? r.entry : r.exit;
+
+  const save = () => {
+    const min = hmToMin(hm);
+    if (min == null) return;
+    let ts = keyToTs(dateKey(defTs)) + min * 60;
+    // turnos nocturnos: la salida no puede ser antes que el ingreso (ni el ingreso después de la salida)
+    if (kind === 'exit' && ts <= other.t) ts += DAY;
+    if (kind === 'entry' && ts >= other.t) ts -= DAY;
+    addManualPunch({ legajo, estId: other.e, ts, note: kind === 'exit' ? 'Salida completada desde el reporte' : 'Ingreso completado desde el reporte' });
+    toast(`${kind === 'exit' ? 'Salida' : 'Ingreso'} agregado a las ${hm} (fichada manual)`);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button type="button" className="btn sm ghost no-print add-punch" onClick={() => setEditing(true)} title={`Cargar la ${label} que falta como fichada manual`}>
+        + {label === 'salida' ? 'Salida' : 'Ingreso'}
+      </button>
+    );
+  }
+  return (
+    <span className="row no-print" style={{ gap: 4 }}>
+      <TimeInput value={hm} onChange={setHm} aria-label={`Hora de ${label}`} autoFocus />
+      <button type="button" className="btn sm" onClick={save}>Agregar</button>
+      <button type="button" className="btn sm ghost" onClick={() => { setEditing(false); setHm(fmtTime(defTs)); }}>Cancelar</button>
+    </span>
   );
 }
 

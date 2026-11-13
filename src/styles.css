@@ -159,6 +159,13 @@ td.nowrap, th.nowrap { white-space: nowrap; }
 .pill.info { background: var(--info-soft); color: var(--info); }
 .pill.neutral { background: var(--sunken); color: var(--muted); }
 .delta { font-family: var(--font-mono); font-size: 11.5px; margin-left: 4px; }
+.bad-text { color: var(--bad); font-weight: 600; }
+.ok-text { color: var(--ok); font-weight: 600; }
+.add-punch { height: 22px; padding: 0 7px; font-size: 12px; color: var(--accent); border: 1px dashed var(--accent); }
+.emp-totals { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 16px 8px 34px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--sunken); }
+.emp-totals b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); margin-left: 4px; }
+.emp-totals b.bad-text { color: var(--bad); } .emp-totals b.ok-text { color: var(--ok); }
+.print-only, .sheets { display: none; }
 .delta.warn { color: var(--warn); } .delta.bad { color: var(--bad); } .delta.ok { color: var(--muted); }
 .plus1 { font-size: 10.5px; color: var(--info); font-family: var(--font-mono); margin-left: 3px; vertical-align: super; }
 
@@ -229,12 +236,46 @@ td.nowrap, th.nowrap { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ---- Impresión / PDF ---- */
+@page { size: A4; margin: 12mm; }
 @media print {
-  .topbar, .no-print, .drawer, .scrim { display: none !important; }
+  /* siempre colores claros y con fondos (los navegadores los quitan por defecto) */
+  :root { --bg: #fff; --surface: #fff; --sunken: #f1f3f2; --ink: #000; --muted: #555; --line: #ccc;
+    --ok: #2c7a4b; --ok-soft: #e3f2e8; --warn: #9a5b00; --warn-soft: #fbefd9; --bad: #b1302a; --bad-soft: #fbe5e3; --info: #3d5a99; --info-soft: #e6ecf7; color-scheme: light; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .topbar, .no-print, .drawer, .scrim, .toast { display: none !important; }
   body { background: #fff; color: #000; font-size: 11px; }
   main { padding: 0; max-width: none; }
   .panel { border: 0; }
+  .print-only { display: block; }
   .emp { break-inside: avoid-page; }
   .emp-body { display: block !important; }
   td, th { padding: 3px 6px; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+
+  /* Planillas por persona: solo se imprimen ellas */
+  body.printing-sheets main > *:not(.sheets) { display: none !important; }
+  body.printing-sheets .sheets { display: block; }
 }
+
+/* ---- Planilla por persona ---- */
+.sheet { break-after: page; font-size: 10.5px; color: #000; }
+.sheet:last-child { break-after: auto; }
+.sheet-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 10px; }
+.sheet-head h2 { font-size: 17px; }
+.sheet-head p { color: #444; }
+.sheet-gen { font-size: 9.5px; }
+.sheet-emp { display: grid; grid-template-columns: 2fr 0.8fr 1.4fr 1.8fr 2fr; gap: 8px; margin: 0 0 10px; }
+.sheet-emp dt { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #555; }
+.sheet-emp dd { margin: 0; font-weight: 600; font-size: 12px; }
+.sheet-table th { font-size: 9px; padding: 4px 5px; border-bottom: 1.5px solid #000; color: #000; }
+.sheet-table td { padding: 3px 5px; border-bottom: 1px solid #ccc; font-size: 10px; }
+.sheet-table .num, .sheet-table .mono { font-size: 10px; }
+.sheet-totals { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid #bbb; border-left: 1px solid #bbb; margin-top: 12px; break-inside: avoid; }
+.sheet-total { background: #fff; padding: 5px 7px; display: flex; flex-direction: column; border-right: 1px solid #bbb; border-bottom: 1px solid #bbb; }
+.sheet-total span { font-size: 9px; color: #555; }
+.sheet-total b { font: 600 13px var(--font-mono); }
+.sheet-note { font-size: 9px; color: #555; margin-top: 6px; }
+.sheet-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 56px; break-inside: avoid; }
+.sheet-signs div { text-align: center; font-size: 10px; color: #333; }
+.sheet-signs span { display: block; border-top: 1px solid #000; margin-bottom: 4px; }

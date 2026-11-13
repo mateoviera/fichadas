@@ -78,3 +78,36 @@ test('imprime resumen de ejemplo', () => {
     odd.forEach((r) => console.log('  ' + rowToText(r)));
   }
 });
+
+test('día sin egreso: no suma a trabajadas, va a horas sin fichada', () => {
+  const sch = { id: 'ocho', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00' }] };
+  const at = (d, h) => Date.UTC(2026, 9, d, h) / 1000; // 2026-10-d (lunes 5 a viernes 9)
+  const punches = [];
+  for (const d of [5, 6, 7, 8, 9]) {
+    punches.push({ e: 'A', t: at(d, 8) });
+    if (d !== 7) punches.push({ e: 'A', t: at(d, 16) }); // el miércoles 7 no fichó la salida
+  }
+  const rows = analyzeEmployee({ punches, schedule: sch, from: '2026-10-05', to: '2026-10-09' });
+  const r7 = rows.find((r) => r.date === '2026-10-07');
+  assert.ok(r7.issues.includes('sin_egreso'));
+  assert.equal(r7.workedMin, 0);
+  assert.equal(r7.missingMin, 480);
+  const s = summarize(rows);
+  assert.equal(s.worked, 4 * 480);
+  assert.equal(s.sinFichada, 480);
+});
+
+test('turno incompleto + fichada suelta del mismo día: primera = ingreso, última = egreso', () => {
+  const sch = { id: 'man', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '13:00' }] };
+  const at = (h, m) => Date.UTC(2026, 7, 20, h, m) / 1000; // jueves 20/08/2026
+  const rows = analyzeEmployee({ punches: [{ e: 'A', t: at(10, 32) }, { e: 'A', t: at(12, 56) }], schedule: sch, from: '2026-08-20', to: '2026-08-20' });
+  assert.equal(rows.length, 1, rows.map(rowToText).join('\n'));
+  const r = rows[0];
+  assert.equal(r.entry.t, at(10, 32));
+  assert.equal(r.exit.t, at(12, 56));
+  assert.ok(r.issues.includes('tarde'));
+  assert.equal(r.lateMin, 152);
+  assert.ok(!r.issues.includes('sin_ingreso'));
+  assert.equal(r.workedMin, 144);
+  assert.equal(r.missingMin, 0);
+});

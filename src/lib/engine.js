@@ -113,7 +113,7 @@ export function analyzeEmployee({ punches, schedule, settings = DEFAULT_SETTINGS
   const P = dedupe(sorted, S.dedupeMin * MIN);
   const used = new Array(P.length).fill(false);
   const matched = new Set();
-  const rows = [];
+  let rows = [];
 
   const hasBlocks = schedule && (schedule.blocks || []).some((b) => blockDuration(b) > 0);
 
@@ -230,6 +230,28 @@ export function analyzeEmployee({ punches, schedule, settings = DEFAULT_SETTINGS
     rows.push(makeRow({ inst: null, entry: p, exit, mids: [], S, holidays, leaves, outside: true }));
   }
 
+  // Turno incompleto + fichadas sueltas del mismo día: aunque estén lejos del horario,
+  // la más temprana es el ingreso y la más tardía el egreso (ej.: turno 08–13, fichó 10:32 y 12:56
+  // → ingreso 10:32 tarde, egreso 12:56; y no "sin ingreso" + "fuera de horario").
+  const merged = new Set();
+  for (let k = 0; k < rows.length; k++) {
+    const r = rows[k];
+    if (!r.inst || merged.has(r) || (r.entry && r.exit) || (!r.entry && !r.exit)) continue;
+    const own = r.entry || r.exit;
+    // Si es el único turno del día, vale todo el día; si hay varios (cortado/rotativo), solo la ventana del turno.
+    const single = instancesForDay(schedule, r.inst.date).length === 1;
+    const dayStart = keyToTs(r.inst.date);
+    const lo = single ? Math.min(r.inst.start - W, dayStart) : r.inst.start - W;
+    const hi = single ? Math.max(r.inst.end + W, dayStart + DAY) : r.inst.end + W;
+    const strays = rows.filter((o) => o !== r && !merged.has(o) && !o.inst && o.issues.includes('fuera') &&
+      [o.entry, o.exit].every((p) => !p || (p.t >= lo && p.t < hi && p.e === own.e)));
+    if (!strays.length) continue;
+    const all = [r.entry, ...r.mids, r.exit, ...strays.flatMap((o) => [o.entry, ...o.mids, o.exit])].filter(Boolean).sort((a, b) => a.t - b.t);
+    strays.forEach((o) => merged.add(o));
+    rows[k] = makeRow({ inst: r.inst, entry: all[0], exit: all[all.length - 1], mids: all.slice(1, -1), S, holidays, leaves });
+  }
+  if (merged.size) rows = rows.filter((r) => !merged.has(r));
+
   // Ausencias (solo horarios fijos: en rotativos no se sabe qué días le tocaba).
   // isCovered(dk, est) indica si hay archivos cargados que cubran ese día (evita falsas ausencias).
   if (schedule.type !== 'rotativo' && from && to) {
@@ -289,7 +311,11 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
   }
   if ((entry && entry.m) || (exit && exit.m)) info.push('manual');
 
+  // Solo cuentan como trabajadas las horas con ingreso Y egreso fichados.
   const workedMin = entry && exit ? Math.round((exit.t - entry.t) / MIN) : 0;
+  // Si falta una de las dos fichadas de un turno programado, las horas del turno
+  // van a "sin fichada" (no se suman a las trabajadas).
+  const missingMin = inst && !absent && (!entry || !exit) ? Math.round(inst.dur / MIN) : 0;
   return {
     key: inst ? inst.key : `x${(entry || exit).t}`,
     date,
@@ -304,6 +330,7 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
     earlyMin,
     extraMin,
     workedMin,
+    missingMin,
     expectedMin: inst && !(absent && (holiday || leave)) ? Math.round(inst.dur / MIN) : 0,
     holidayName: holiday || '',
     leaveType: leave ? leave.type : '',
@@ -322,11 +349,12 @@ function sortTs(r) {
 }
 
 export function summarize(rows) {
-  const s = { turnos: 0, ok: 0, tarde: 0, tardeMin: 0, anticipada: 0, anticipadaMin: 0, incompleto: 0, ausente: 0, fuera: 0, worked: 0, expected: 0, extra: 0, evaluables: 0 };
+  const s = { turnos: 0, ok: 0, tarde: 0, tardeMin: 0, anticipada: 0, anticipadaMin: 0, incompleto: 0, ausente: 0, fuera: 0, worked: 0, sinFichada: 0, expected: 0, extra: 0, evaluables: 0 };
   for (const r of rows) {
     const isAbsentExcused = !r.entry && !r.exit;
     if (!isAbsentExcused) s.turnos++;
     s.worked += r.workedMin;
+    s.sinFichada += r.missingMin || 0;
     s.expected += r.expectedMin;
     s.extra += r.extraMin;
     if (r.issues.includes('tarde')) { s.tarde++; s.tardeMin += r.lateMin; }
@@ -340,6 +368,8 @@ export function summarize(rows) {
       if (!r.issues.length) s.ok++;
     }
   }
+  // Saldo: horas trabajadas (con ambas fichadas) menos horas esperadas por horario.
+  s.saldo = s.worked - s.expected;
   s.cumplimiento = s.evaluables ? Math.round((s.ok / s.evaluables) * 100) : null;
   return s;
 }
