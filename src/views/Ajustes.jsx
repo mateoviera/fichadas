@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useStore, setSettings, addHolidays, removeHoliday, restoreBackup, resetAll, getState } from '../lib/store.js';
+import { useStore, setSettings, addHolidays, removeHoliday, restoreBackup, resetAll, getState, CLOUD } from '../lib/store.js';
 import { fetchHolidays, download } from '../lib/io.js';
 import { fmtDate, fmtDateShort, todayKey } from '../lib/time.js';
 import { ConfirmButton, useToast } from '../components/ui.jsx';
@@ -92,7 +92,7 @@ export default function Ajustes() {
 
         <div className="panel panel-pad stack">
           <h3>Copia de seguridad</h3>
-          <p className="muted small">Los datos se guardan en este navegador. Descargá una copia para pasarlos a otra computadora o para no perderlos si se borra el historial.</p>
+          <p className="muted small">{CLOUD ? 'Los datos se guardan en la base compartida. Podés descargar una copia como respaldo extra. «Restaurar copia» sube a la base los datos de una copia (sirve para pasar los datos que había en una computadora).' : 'Los datos se guardan en este navegador. Descargá una copia para pasarlos a otra computadora o para no perderlos si se borra el historial.'}</p>
           <div className="row">
             <button className="btn primary" onClick={backup}>Descargar copia</button>
             <button className="btn" onClick={() => fileRef.current.click()}>Restaurar copia</button>
@@ -103,7 +103,7 @@ export default function Ajustes() {
 
         <div className="panel panel-pad stack">
           <h3>Borrar datos</h3>
-          <p className="muted small">Elimina fichadas, personal, horarios y ajustes de este navegador. Descargá una copia antes.</p>
+          <p className="muted small">{CLOUD ? 'Elimina fichadas, personal, horarios y ajustes de la base compartida, para todos los usuarios. Descargá una copia antes.' : 'Elimina fichadas, personal, horarios y ajustes de este navegador. Descargá una copia antes.'}</p>
           <div><ConfirmButton className="btn danger" confirmLabel="Sí, borrar todo" onConfirm={() => { resetAll(); toast('Datos borrados'); }}>Borrar todos los datos</ConfirmButton></div>
         </div>
       </div>

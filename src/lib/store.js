@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import { DEFAULT_SETTINGS } from './engine.js';
 import { dateKey } from './time.js';
+import * as remote from './remote.js';
+
+/** true si la app guarda en Supabase (hay variables de entorno); false = solo en el navegador. */
+export const CLOUD = remote.enabled;
 
 const KEY = 'fichadas:v1';
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -48,9 +52,17 @@ function load() {
   return empty();
 }
 
-let state = load();
+// En modo nube el estado arranca vacío y se completa con loadFromCloud() después del login.
+let state = CLOUD ? { ...empty(), schedules: [] } : load();
 const listeners = new Set();
 let saveTimer = null;
+
+/** Trae todos los datos desde Supabase y los pone en pantalla (sin volver a enviarlos). */
+export async function loadFromCloud() {
+  const next = await remote.loadAll({ ...empty(), schedules: [] });
+  state = next;
+  listeners.forEach((l) => l());
+}
 
 function persist() {
   clearTimeout(saveTimer);
@@ -68,8 +80,10 @@ export function getState() {
 }
 
 export function setState(fn) {
+  const prev = state;
   state = typeof fn === 'function' ? fn(state) : fn;
-  persist();
+  if (CLOUD) remote.push(prev, state);
+  else persist();
   listeners.forEach((l) => l());
 }
 
@@ -226,6 +240,7 @@ export function removeManualPunch(id) {
 
 export function restoreBackup(obj) {
   if (!obj || !Array.isArray(obj.punches) || typeof obj.employees !== 'object') throw new Error('El archivo no es una copia de seguridad válida.');
+  // En modo nube esto sube todo a la base (sirve para migrar los datos de una PC).
   setState({ ...empty(), ...obj });
 }
 

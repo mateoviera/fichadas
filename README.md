@@ -64,7 +64,7 @@ En el navegador (localStorage) de la computadora donde se usa. Esto significa:
 - Cada computadora o navegador tiene sus propios datos. Para pasarlos a otra, usá **Ajustes → Descargar copia** y después **Restaurar copia** en la otra.
 - Si se borra el historial del navegador se pierden: hacé una copia de seguridad cada mes.
 
-Si más adelante necesitan que varias personas trabajen sobre los mismos datos, el paso siguiente es reemplazar `src/lib/store.js` por una base compartida (por ejemplo Supabase o Firebase). El resto de la web no cambia.
+Para que varias personas trabajen sobre los mismos datos, la app puede guardar en **Supabase** (en la nube o en una PC de la empresa con Docker). Se activa completando `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; sin esas variables sigue funcionando en el navegador como siempre. Paso a paso en [docs/BACKEND.md](docs/BACKEND.md).
 
 ## Estructura
 
