@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useStore, upsertEmployee, addLeave, updateLeave, removeLeave, saveVacGroup, deleteVacGroup } from '../lib/store.js';
+import { useStore, upsertEmployee, bulkAssign, addLeave, updateLeave, removeLeave, saveVacGroup, deleteVacGroup } from '../lib/store.js';
 import { ConfirmButton, useToast } from '../components/ui.jsx';
 import { fmtDate, todayKey, eachDay, weekday, WEEKDAYS_LETTER } from '../lib/time.js';
 import { VACATION, seniority, fmtSeniority, vacationConflicts, vacationBalance, leaveLength, seniorityCompare } from '../lib/personal.js';
@@ -255,16 +255,31 @@ function Legajos() {
   const [q, setQ] = useState('');
   const [showOld, setShowOld] = useState(false);
   const [groupF, setGroupF] = useState('');
+  const [sectorF, setSectorF] = useState('');
+  const [sel, setSel] = useState(() => new Set());
+  const [target, setTarget] = useState('');
+  const toast = useToast();
   const year = Number(today.slice(0, 4));
   const groups = state.vacGroups || [];
+  const sectors = useMemo(() => [...new Set(Object.values(state.employees).map((e) => e.sector).filter(Boolean))].sort(), [state.employees]);
 
   const list = useMemo(() => {
     const n = q.trim().toLowerCase();
     return Object.values(state.employees)
       .filter((e) => (showOld || active(e, today)) && (!n || `${e.legajo} ${e.name} ${e.position} ${e.sector}`.toLowerCase().includes(n)))
       .filter((e) => !groupF || (e.vacGroup || '__none') === groupF)
+      .filter((e) => !sectorF || (e.sector || '') === sectorF)
       .sort((a, b) => seniorityCompare(a, b));
-  }, [state.employees, q, showOld, groupF, today]);
+  }, [state.employees, q, showOld, groupF, sectorF, today]);
+  const allSel = list.length > 0 && list.every((e) => sel.has(e.legajo));
+  const toggle = (l) => setSel((x) => { const n = new Set(x); n.has(l) ? n.delete(l) : n.add(l); return n; });
+  const move = () => {
+    const legs = [...sel];
+    bulkAssign(legs, { vacGroup: target === '__none' ? '' : target });
+    toast(`${legs.length} ${legs.length === 1 ? 'persona movida' : 'personas movidas'} a ${target === '__none' ? 'Sin grupo' : groups.find((g) => g.id === target)?.name}`);
+    setSel(new Set());
+    setTarget('');
+  };
 
   const set = (leg, patch) => upsertEmployee(leg, patch);
 
@@ -280,14 +295,34 @@ function Legajos() {
             <option value="__none">Sin grupo</option>
           </select>
         </label>
+        <label className="field">
+          <span>Sector</span>
+          <select id="g-sf" className="input" value={sectorF} onChange={(e) => setSectorF(e.target.value)}>
+            <option value="">Todos</option>
+            {sectors.map((x) => <option key={x}>{x}</option>)}
+          </select>
+        </label>
         <label className="row small" style={{ height: 34 }}><input id="g-old" type="checkbox" checked={showOld} onChange={(e) => setShowOld(e.target.checked)} /> Mostrar dados de baja</label>
       </div>
+      {sel.size > 0 && (
+        <div className="panel panel-pad row">
+          <b>{sel.size} {sel.size === 1 ? 'seleccionada' : 'seleccionadas'}</b>
+          <select id="g-target" className="input" style={{ width: 'auto' }} value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Grupo destino">
+            <option value="">Mover al grupo…</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            <option value="__none">Sin grupo</option>
+          </select>
+          <button className="btn primary" disabled={!target} onClick={move}>Mover</button>
+          <button className="btn ghost" onClick={() => setSel(new Set())}>Cancelar</button>
+        </div>
+      )}
       <p className="muted small">Ordenado por antigüedad (el primero tiene prioridad para las vacaciones). Los días de vacaciones se calculan por la LCT con la antigüedad al 31/12/{year}. Quien tiene fecha de egreso deja de aparecer en el control de fichadas desde ese día.</p>
       <div className="panel table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Legajo</th><th>Nombre</th><th>Puesto</th><th>Ingreso</th><th>Antigüedad</th><th className="right" title={`Vacaciones ${year}`}>Vac. {year}</th><th>Grupo de vacaciones</th><th>Egreso</th><th>DNI</th><th>CUIL</th>
+              <th style={{ width: 32 }}><input type="checkbox" aria-label="Seleccionar todos" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(list.map((e) => e.legajo)))} /></th>
+              <th>Legajo</th><th>Nombre</th><th>Sector</th><th>Puesto</th><th>Ingreso</th><th>Antigüedad</th><th className="right" title={`Vacaciones ${year}`}>Vac. {year}</th><th>Grupo de vacaciones</th><th>Egreso</th><th>DNI</th><th>CUIL</th>
             </tr>
           </thead>
           <tbody>
@@ -296,8 +331,10 @@ function Legajos() {
               const gone = e.exitDate && e.exitDate < today;
               return (
                 <tr key={e.legajo} className={gone ? 'dim' : ''}>
+                  <td><input type="checkbox" aria-label={`Seleccionar ${e.legajo}`} checked={sel.has(e.legajo)} onChange={() => toggle(e.legajo)} /></td>
                   <td className="mono">{e.legajo}</td>
                   <td style={{ minWidth: 160 }}><input id={`gn-${e.legajo}`} className="input inline" value={e.name} placeholder="Sin nombre" onChange={(ev) => set(e.legajo, { name: ev.target.value })} /></td>
+                  <td className="small nowrap">{e.sector || <span className="muted">—</span>}</td>
                   <td style={{ minWidth: 140 }}><input id={`gp-${e.legajo}`} className="input inline" value={e.position || ''} placeholder="—" onChange={(ev) => set(e.legajo, { position: ev.target.value })} /></td>
                   <td><input id={`gi-${e.legajo}`} type="date" className="input inline" value={e.hireDate || ''} onChange={(ev) => set(e.legajo, { hireDate: ev.target.value })} /></td>
                   <td className="small nowrap">{fmtSeniority(seniority(e.hireDate))}</td>
@@ -305,7 +342,7 @@ function Legajos() {
                     {bal.corr ? <>{bal.corr.days} <span className="muted">· restan</span> <b className={bal.left < 0 ? 'bad-text' : ''}>{bal.left}</b></> : '—'}
                     {bal.pending > 0 && <div className="small muted">{bal.pending} pendientes</div>}
                   </td>
-                  <td style={{ minWidth: 170 }}>
+                  <td style={{ minWidth: 220 }}>
                     <select id={`gg-${e.legajo}`} className="input inline" value={e.vacGroup || ''} onChange={(ev) => set(e.legajo, { vacGroup: ev.target.value })}>
                       <option value="">Sin grupo</option>
                       {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -317,7 +354,7 @@ function Legajos() {
                 </tr>
               );
             })}
-            {!list.length && <tr><td colSpan={10} className="empty">No hay personas para mostrar.</td></tr>}
+            {!list.length && <tr><td colSpan={12} className="empty">No hay personas para mostrar.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -329,16 +366,23 @@ function Legajos() {
 
 function Grupos() {
   const state = useStore();
+  const toast = useToast();
   const groups = state.vacGroups || [];
   const emps = Object.values(state.employees).filter((e) => active(e));
+  const sectors = [...new Set(emps.map((e) => e.sector).filter(Boolean))].sort();
+  const addSector = (g, sector) => {
+    const legs = emps.filter((e) => e.sector === sector && e.vacGroup !== g.id).map((e) => e.legajo);
+    bulkAssign(legs, { vacGroup: g.id });
+    toast(`${legs.length} de ${sector} agregados a ${g.name}`);
+  };
 
   return (
     <div className="stack">
       <div className="row">
         <p className="muted small" style={{ flex: 1, margin: 0 }}>
-          Cada grupo define cuántas personas pueden estar de vacaciones al mismo tiempo. Si se pasan, conservan el lugar las de mayor antigüedad y las demás quedan marcadas para que decidas: cambiar fechas, rechazar o aprobar como excepción. «Sin control» no marca superposiciones.
+          Cada grupo define cuántas personas pueden estar de vacaciones al mismo tiempo; los grupos nuevos arrancan en «No pueden superponerse». Si se pasan, conservan el lugar las de mayor antigüedad y las demás quedan marcadas para que decidas: cambiar fechas, rechazar o aprobar como excepción. «Sin control» no marca superposiciones.
         </p>
-        <button className="btn primary" onClick={() => saveVacGroup({ name: 'Nuevo grupo', max: 1 })}>Nuevo grupo</button>
+        <NewGroup />
       </div>
       {groups.map((g) => {
         const members = emps.filter((e) => e.vacGroup === g.id).sort(seniorityCompare);
@@ -361,19 +405,43 @@ function Grupos() {
                   <li key={e.legajo}>
                     <span>{e.name || 'Sin nombre'} <span className="mono muted">#{e.legajo}</span></span>
                     <span className="muted small">{e.position || ''}{e.position ? ' · ' : ''}{e.hireDate ? `ingreso ${fmtDate(e.hireDate)} (${fmtSeniority(seniority(e.hireDate))})` : 'sin fecha de ingreso'}</span>
-                    <button className="btn sm ghost" onClick={() => upsertEmployee(e.legajo, { vacGroup: '' })} aria-label={`Sacar a ${e.name} del grupo`}>Sacar</button>
+                    <select className="input" style={{ width: 'auto', height: 26, marginLeft: 6 }} value="" aria-label={`Mover a ${e.name} a otro grupo`} onChange={(ev) => ev.target.value && upsertEmployee(e.legajo, { vacGroup: ev.target.value === '__none' ? '' : ev.target.value })}>
+                      <option value="">Mover a…</option>
+                      {groups.filter((x) => x.id !== g.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                      <option value="__none">Sacar del grupo</option>
+                    </select>
                   </li>
                 ))}
               </ol>
-              <select id={`vg-add-${g.id}`} className="input" style={{ maxWidth: 360 }} value="" onChange={(e) => e.target.value && upsertEmployee(e.target.value, { vacGroup: g.id })}>
-                <option value="">Agregar persona…</option>
-                {others.map((e) => <option key={e.legajo} value={e.legajo}>{label(e)}{e.vacGroup ? ` (en otro grupo)` : ''}</option>)}
-              </select>
+              <div className="row">
+                <select id={`vg-add-${g.id}`} className="input" style={{ maxWidth: 360 }} value="" onChange={(e) => e.target.value && upsertEmployee(e.target.value, { vacGroup: g.id })}>
+                  <option value="">Agregar persona…</option>
+                  {others.map((e) => <option key={e.legajo} value={e.legajo}>{label(e)}{e.sector ? ` · ${e.sector}` : ''}{e.vacGroup ? ` (en ${groups.find((x) => x.id === e.vacGroup)?.name || 'otro grupo'})` : ''}</option>)}
+                </select>
+                {sectors.length > 0 && (
+                  <select id={`vg-sec-${g.id}`} className="input" style={{ maxWidth: 280 }} value="" onChange={(e) => e.target.value && addSector(g, e.target.value)}>
+                    <option value="">Agregar todo un sector…</option>
+                    {sectors.map((x) => <option key={x} value={x}>{x} ({emps.filter((e) => e.sector === x).length})</option>)}
+                  </select>
+                )}
+              </div>
             </div>
           </div>
         );
       })}
       {!groups.length && <div className="panel empty">No hay grupos. Creá uno para controlar que no se superpongan las vacaciones.</div>}
     </div>
+  );
+}
+
+/** Alta de grupo con nombre (por defecto: no pueden superponerse). */
+function NewGroup() {
+  const [name, setName] = useState('');
+  const toast = useToast();
+  return (
+    <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; saveVacGroup({ name: name.trim(), max: 1 }); toast(`Grupo «${name.trim()}» creado`); setName(''); }}>
+      <input id="vg-new" className="input" style={{ width: 240 }} placeholder="Nombre del grupo (ej. Enfermería)" value={name} onChange={(e) => setName(e.target.value)} />
+      <button className="btn primary" disabled={!name.trim()}>Crear grupo</button>
+    </form>
   );
 }
