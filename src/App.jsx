@@ -1,28 +1,33 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ToastProvider } from './components/ui.jsx';
-import { useStore, CLOUD, loadFromCloud } from './lib/store.js';
+import { CLOUD, loadFromCloud, setActor } from './lib/store.js';
 import { supabase, getSyncStatus, subscribeSync } from './lib/remote.js';
 import Reporte from './views/Reporte.jsx';
 import Personal from './views/Personal.jsx';
-import Gestion from './views/Gestion.jsx';
+import Solicitudes from './views/Solicitudes.jsx';
 import Horarios from './views/Horarios.jsx';
 import Archivos from './views/Archivos.jsx';
 import Ajustes from './views/Ajustes.jsx';
 import Login from './views/Login.jsx';
 
+// Secciones principales. Configuración agrupa horarios, archivos del reloj y ajustes.
 const TABS = [
-  ['fichadas', 'Fichadas'],
   ['personal', 'Personal'],
-  ['gestion', 'Gestión del personal'],
+  ['fichadas', 'Fichadas'],
+  ['solicitudes', 'Vacaciones y solicitudes'],
+  ['horarios', 'Configuración'],
+];
+const CONFIG = [
   ['horarios', 'Horarios'],
-  ['archivos', 'Archivos'],
+  ['archivos', 'Archivos del reloj'],
   ['ajustes', 'Ajustes'],
 ];
+const isConfig = (t) => CONFIG.some(([k]) => k === t);
 
-function useHash(hasData) {
+function useHash() {
   const read = () => {
     const h = location.hash.replace('#', '');
-    return TABS.some(([k]) => k === h) ? h : hasData ? 'fichadas' : 'archivos';
+    return TABS.some(([k]) => k === h) || isConfig(h) ? h : 'personal';
   };
   const [tab, setTab] = useState(read);
   useEffect(() => {
@@ -81,7 +86,7 @@ function Splash({ text, children }) {
   return (
     <div className="login-wrap">
       <div className="panel panel-pad login stack">
-        <div className="brand"><span className="brand-mark">F</span>Control de Fichadas</div>
+        <div className="brand"><span className="brand-mark">GP</span>Gestión de Personal</div>
         <p className="muted">{text}</p>
         {children}
       </div>
@@ -90,8 +95,8 @@ function Splash({ text, children }) {
 }
 
 function Main({ user }) {
-  const hasData = useStore((s) => s.punches.length > 0);
-  const tab = useHash(hasData);
+  const tab = useHash();
+  if (user) setActor(user.email);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [tab]);
@@ -100,10 +105,10 @@ function Main({ user }) {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand"><span className="brand-mark">F</span>Control de Fichadas</div>
+          <div className="brand"><span className="brand-mark">GP</span>Gestión de Personal</div>
           <nav className="nav" aria-label="Secciones">
             {TABS.map(([k, label]) => (
-              <a key={k} href={`#${k}`} aria-current={tab === k ? 'page' : undefined}>{label}</a>
+              <a key={k} href={`#${k}`} aria-current={tab === k || (k === 'horarios' && isConfig(tab)) ? 'page' : undefined}>{label}</a>
             ))}
           </nav>
           {user && <UserBox user={user} />}
@@ -111,12 +116,19 @@ function Main({ user }) {
       </header>
       <SyncError />
       <main>
-        {tab === 'fichadas' && <Reporte />}
         {tab === 'personal' && <Personal />}
-        {tab === 'gestion' && <Gestion />}
-        {tab === 'horarios' && <Horarios />}
-        {tab === 'archivos' && <Archivos/>}
-        {tab === 'ajustes' && <Ajustes />}
+        {tab === 'fichadas' && <Reporte />}
+        {tab === 'solicitudes' && <Solicitudes />}
+        {isConfig(tab) && (
+          <>
+            <div className="tabs" role="tablist" aria-label="Configuración">
+              {CONFIG.map(([k, l]) => <a key={k} role="tab" href={`#${k}`} aria-selected={tab === k}>{l}</a>)}
+            </div>
+            {tab === 'horarios' && <Horarios />}
+            {tab === 'archivos' && <Archivos />}
+            {tab === 'ajustes' && <Ajustes />}
+          </>
+        )}
       </main>
     </>
   );

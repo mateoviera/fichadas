@@ -4,7 +4,7 @@ import { computeReport, STATUS_FILTERS, buildExportSheets, fmtSigned } from '../
 import { fmtTime, fmtDateShort, fmtDuration, dateKey, keyToTs, hmToMin, DAY } from '../lib/time.js';
 import { buildXlsx } from '../lib/xlsx.js';
 import { download, toCSV } from '../lib/io.js';
-import { RowPills, EstSelect, useToast, TimeInput } from '../components/ui.jsx';
+import { RowPills, EstSelect, useToast, TimeInput, Help } from '../components/ui.jsx';
 import EmployeeDrawer from './EmployeeDrawer.jsx';
 import Planilla from './Planilla.jsx';
 
@@ -82,7 +82,7 @@ export default function Reporte() {
     return (
       <div className="panel empty">
         <h3>Todavía no hay fichadas</h3>
-        <p>Cargá los TXT de los relojes en <a href="#archivos">Archivos</a> para ver el control de horarios.</p>
+        <p>Cargá los TXT de los relojes en <a href="#archivos">Configuración → Archivos del reloj</a> para ver el control de horarios.</p>
       </div>
     );
   }
@@ -91,11 +91,12 @@ export default function Reporte() {
     <>
       <div className="page-head">
         <div>
-          <h2>Control de fichadas</h2>
-          <p>{from && to ? `${fmtDateShort(from)} al ${fmtDateShort(to)}` : 'Elegí un período'} · {estId ? state.establishments[estId]?.name : 'todos los establecimientos'}</p>
+          <h2>Fichadas</h2>
+          <p>Entradas y salidas del reloj comparadas con el horario de cada persona · {from && to ? `${fmtDateShort(from)} al ${fmtDateShort(to)}` : 'elegí un período'} · {estId ? state.establishments[estId]?.name : 'todos los establecimientos'}</p>
           <p className="print-only small">{printInfo}</p>
         </div>
         <div className="row no-print">
+          <a className="btn" href="#archivos">Cargar archivos del reloj</a>
           <button className="btn" onClick={exportXlsx} disabled={!report.list.length}>Excel</button>
           <button className="btn" onClick={exportCsv} disabled={!report.list.length}>CSV</button>
           <button className="btn" onClick={printPdf} disabled={!report.list.length} title="Listado de todas las personas filtradas">Imprimir listado</button>
@@ -135,18 +136,24 @@ export default function Reporte() {
       </div>
 
       {t && (
-        <div className="stats">
-          <Stat label="Cumplimiento" value={t.cumplimiento == null ? '—' : `${t.cumplimiento}%`} tone="ok" />
-          <Stat label="Turnos" value={t.turnos} />
-          <Stat label="Llegadas tarde" value={t.tarde} tone={t.tarde ? 'warn' : ''} onClick={() => setStatus(status === 'tarde' ? 'todos' : 'tarde')} pressed={status === 'tarde'} />
-          <Stat label="Salidas anticipadas" value={t.anticipada} tone={t.anticipada ? 'warn' : ''} onClick={() => setStatus(status === 'anticipada' ? 'todos' : 'anticipada')} pressed={status === 'anticipada'} />
-          <Stat label="Incompletos" value={t.incompleto} tone={t.incompleto ? 'bad' : ''} onClick={() => setStatus(status === 'incompleto' ? 'todos' : 'incompleto')} pressed={status === 'incompleto'} />
-          <Stat label="Ausencias" value={t.ausente} tone={t.ausente ? 'bad' : ''} onClick={() => setStatus(status === 'ausente' ? 'todos' : 'ausente')} pressed={status === 'ausente'} />
-          <Stat label="Horas trabajadas" value={fmtDuration(t.worked)} />
-          <Stat label="Horas sin fichada" value={fmtDuration(t.sinFichada)} tone={t.sinFichada ? 'bad' : ''} onClick={() => setStatus(status === 'incompleto' ? 'todos' : 'incompleto')} pressed={status === 'incompleto'} />
-          {t.expected > 0 && <Stat label="Horas esperadas" value={fmtDuration(t.expected)} />}
-          {t.expected > 0 && <Stat label="Saldo (trab. − esp.)" value={fmtSigned(t.saldo)} tone={t.saldo < 0 ? 'bad' : 'ok'} />}
-        </div>
+        <>
+          <div className="stats">
+            <Stat label="Cumplimiento" value={t.cumplimiento == null ? '—' : `${t.cumplimiento}%`} tone="ok" hint="Turnos sin ninguna incidencia" />
+            <Stat label="Llegadas tarde" value={t.tarde} tone={t.tarde ? 'warn' : ''} onClick={() => setStatus(status === 'tarde' ? 'todos' : 'tarde')} pressed={status === 'tarde'} />
+            <Stat label="Salidas antes de hora" value={t.anticipada} tone={t.anticipada ? 'warn' : ''} onClick={() => setStatus(status === 'anticipada' ? 'todos' : 'anticipada')} pressed={status === 'anticipada'} />
+            <Stat label="Falta entrada o salida" value={t.incompleto} tone={t.incompleto ? 'bad' : ''} onClick={() => setStatus(status === 'incompleto' ? 'todos' : 'incompleto')} pressed={status === 'incompleto'} />
+            <Stat label="Ausencias" value={t.ausente} tone={t.ausente ? 'bad' : ''} onClick={() => setStatus(status === 'ausente' ? 'todos' : 'ausente')} pressed={status === 'ausente'} />
+          </div>
+          <Help>
+            <ul className="plain">
+              <li><b>Cumplimiento</b>: de los turnos que tenía que hacer, cuántos se hicieron sin ninguna incidencia.</li>
+              <li><b>Llegada tarde / salida antes de hora</b>: más de {state.settings.tolIn ?? 10} minutos de diferencia con el horario (se cambia en Configuración → Ajustes).</li>
+              <li><b>Falta entrada o salida</b>: fichó solo una de las dos. Esas horas no se pueden contar hasta que se complete (botón «+ Salida» / «+ Ingreso»).</li>
+              <li><b>Ausencia</b>: no fichó en un día que le tocaba, sin feriado ni solicitud aprobada. En horarios rotativos no hay ausencias: se comparan las horas del mes.</li>
+              <li>Tocá un número para ver solo esos casos. Abrí una persona para ver sus horas y el detalle día por día.</li>
+            </ul>
+          </Help>
+        </>
       )}
 
       {unassigned > 0 && (
@@ -173,10 +180,10 @@ export default function Reporte() {
   );
 }
 
-function Stat({ label, value, tone = '', onClick, pressed }) {
+function Stat({ label, value, tone = '', onClick, pressed, hint }) {
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className={`stat ${tone}`} onClick={onClick} aria-pressed={onClick ? !!pressed : undefined} type={onClick ? 'button' : undefined}>
+    <Tag className={`stat ${tone}`} onClick={onClick} aria-pressed={onClick ? !!pressed : undefined} type={onClick ? 'button' : undefined} title={hint || (onClick ? 'Tocá para ver solo estos casos' : undefined)}>
       <b>{value}</b>
       <span>{label}</span>
     </Tag>
@@ -186,6 +193,7 @@ function Stat({ label, value, tone = '', onClick, pressed }) {
 function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
   const { emp, sch, rows, summary: s } = x;
   const issues = s.tarde + s.anticipada + s.incompleto + s.ausente;
+  const multiEst = (x.ests || []).length > 1;
   return (
     <section className="emp">
       <button className="emp-head" onClick={onToggle} aria-expanded={open}>
@@ -193,48 +201,67 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
           <span className={`caret ${open ? 'open' : ''}`}>›</span>
           <strong>{emp.name || 'Sin nombre'}</strong>
           <span className="mono muted">#{emp.legajo}</span>
-          {emp.sector && <span className="muted small">{emp.sector}</span>}
-          <span className="muted small">· {sch ? sch.name : 'Sin horario'}</span>
+          <span className="muted small">{sch ? sch.name : 'Sin horario asignado'}</span>
         </span>
         <span className="emp-meta">
+          {s.tarde > 0 && <span className="pill warn">{s.tarde} tarde</span>}
+          {s.anticipada > 0 && <span className="pill warn">{s.anticipada} antes de hora</span>}
+          {s.incompleto > 0 && <span className="pill bad">{s.incompleto} sin entrada/salida</span>}
+          {s.ausente > 0 && <span className="pill bad">{s.ausente} {s.ausente === 1 ? 'ausencia' : 'ausencias'}</span>}
+          {!issues && sch && <span className="pill ok">Sin incidencias</span>}
           {s.cumplimiento != null && (
-            <span className="row small" style={{ gap: 6 }} title="Turnos cumplidos sobre turnos evaluables">
+            <span className="row small" style={{ gap: 6 }} title="Turnos sin incidencias sobre turnos que tenía que hacer">
               <span className="bar"><i style={{ width: `${s.cumplimiento}%` }} /></span>
               <span className="num">{s.cumplimiento}%</span>
             </span>
           )}
-          {s.tarde > 0 && <span className="pill warn">{s.tarde} tarde</span>}
-          {s.anticipada > 0 && <span className="pill warn">{s.anticipada} anticip.</span>}
-          {s.incompleto > 0 && <span className="pill bad">{s.incompleto} incomp.</span>}
-          {s.ausente > 0 && <span className="pill bad">{s.ausente} ausente</span>}
-          {!issues && sch && <span className="pill ok">Sin incidencias</span>}
-          <span className="num muted" title={s.expected ? 'Horas trabajadas / esperadas' : 'Horas trabajadas (con ingreso y egreso fichados)'}>
-            {fmtDuration(s.worked)}{s.expected > 0 && ` / ${fmtDuration(s.expected)}`} h
-          </span>
-          {s.sinFichada > 0 && <span className="num bad-text" title="Horas de turnos sin ingreso o sin egreso fichado: no suman a las trabajadas">{fmtDuration(s.sinFichada)} h sin fichada</span>}
         </span>
       </button>
       {open && (
         <div className="emp-body">
-          <div className="emp-totals">
-            <span>Trabajadas <b>{fmtDuration(s.worked)}</b></span>
-            {s.sinFichada > 0 && <span>Sin fichada <b className="bad-text">{fmtDuration(s.sinFichada)}</b></span>}
-            {s.quota && (
-              <span title={s.quota.weeks.map((w) => `${w.from.slice(8)}–${w.to.slice(8)}/${w.from.slice(5, 7)}: ${w.days} días (${w.francos} franco${w.francos > 1 ? 's' : ''})`).join('\n')}>
-                Días esperados <b>{s.quota.days}</b> · turnos completos <b>{s.daysWorked}</b> · turno de {fmtDuration(s.quota.shiftMin)} h
-              </span>
+          <div className="hours">
+            <div>
+              <span>Horas trabajadas</span>
+              <b>{fmtDuration(s.worked)} h</b>
+              <small>con entrada y salida fichadas</small>
+            </div>
+            {s.expected > 0 && (
+              <div>
+                <span>Horas que debía trabajar</span>
+                <b>{fmtDuration(s.expected)} h</b>
+                <small>{s.quota ? `${s.quota.days} días × turno de ${fmtDuration(s.quota.shiftMin)} h (mes del 1 al anteúltimo, menos 6 francos)` : 'según su horario, sin feriados ni licencias'}</small>
+              </div>
             )}
-            {s.expected > 0 && <span>Esperadas <b>{fmtDuration(s.expected)}</b></span>}
-            {s.expected > 0 && <span>Saldo <b className={s.saldo < 0 ? 'bad-text' : 'ok-text'}>{fmtSigned(s.saldo)}</b></span>}
-            {s.extra > 0 && <span>Extra <b>{fmtDuration(s.extra)}</b></span>}
-            {s.tardeMin > 0 && <span>Min. tarde <b>{s.tardeMin}</b></span>}
-            {s.anticipadaMin > 0 && <span>Min. anticipados <b>{s.anticipadaMin}</b></span>}
+            {s.expected > 0 && (
+              <div>
+                <span>Diferencia</span>
+                <b className={s.saldo < 0 ? 'bad-text' : 'ok-text'}>{fmtSigned(s.saldo)} h</b>
+                <small>{s.saldo < 0 ? 'le faltan horas' : s.saldo > 0 ? 'trabajó de más' : 'justo'}</small>
+              </div>
+            )}
+            {s.quota && (
+              <div>
+                <span>Turnos completos</span>
+                <b>{s.daysWorked} de {Math.round(s.quota.days)}</b>
+                <small>días esperados en el período</small>
+              </div>
+            )}
           </div>
+          {(s.sinFichada > 0 || s.extra > 0 || s.tardeMin > 0) && (
+            <p className="emp-note">
+              {[
+                s.sinFichada > 0 && `${fmtDuration(s.sinFichada)} h no se cuentan porque falta la entrada o la salida`,
+                s.tardeMin > 0 && `${s.tardeMin} min de tardanza en total`,
+                s.anticipadaMin > 0 && `${s.anticipadaMin} min de salidas antes de hora`,
+                s.extra > 0 && `${fmtDuration(s.extra)} h después del horario`,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Fecha</th><th>Turno</th><th>Ingreso</th><th>Egreso</th><th className="right">Horas</th><th>Estado</th><th>Establecimiento</th>
+                  <th>Fecha</th><th>Horario</th><th>Entrada</th><th>Salida</th><th className="right">Horas</th><th>Estado</th>{multiEst && <th>Lugar</th>}
                 </tr>
               </thead>
               <tbody>
@@ -249,29 +276,26 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
                     </td>
                     <td className="mono nowrap">
                       {r.exit ? fmtTime(r.exit.t) : '--:--'}
-                      {r.nextDayExit && <span className="plus1" title={`Egreso el ${dateKey(r.exit.t)}`}>+1</span>}
+                      {r.nextDayExit && <span className="plus1" title={`Salida el ${dateKey(r.exit.t)}`}>+1</span>}
                       {r.exit && r.inst && <Delta min={Math.round((r.exit.t - r.inst.end) / 60)} tol={state.settings.tolOut} exit />}
                       {r.exit?.m && <span className="plus1" title={r.exit.m}>M</span>}
-                      {r.mids.length > 0 && <span className="muted small" title={`Fichadas intermedias: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}`}> · {r.mids.length} intermedia{r.mids.length > 1 ? 's' : ''}</span>}
+                      {r.mids.length > 0 && <span className="muted small" title={`Fichadas en el medio: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}`}> · {r.mids.length} en el medio</span>}
                     </td>
-                    <td className="num right nowrap">
-                      {r.workedMin ? fmtDuration(r.workedMin) : ''}
-                      {r.missingMin > 0 && <span className="bad-text" title="Horas del turno sin fichada: no suman a las trabajadas">{fmtDuration(r.missingMin)} sin fichada</span>}
-                    </td>
+                    <td className="num right nowrap">{r.workedMin ? fmtDuration(r.workedMin) : ''}</td>
                     <td>
                       <span className="row" style={{ gap: 6 }}>
                         <RowPills r={r} />
                         <CompleteMissing r={r} legajo={emp.legajo} />
                       </span>
                     </td>
-                    <td className="muted small nowrap">{state.establishments[r.est]?.name || ''}</td>
+                    {multiEst && <td className="muted small nowrap">{state.establishments[r.est]?.name || ''}</td>}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="row no-print" style={{ padding: '8px 16px 0 34px' }}>
-            <button className="btn sm" onClick={onDetail}>Horario, licencias y fichadas manuales</button>
+            <button className="btn sm" onClick={onDetail}>Ficha de la persona</button>
             <button className="btn sm" onClick={onPrint}>Imprimir planilla</button>
           </div>
         </div>

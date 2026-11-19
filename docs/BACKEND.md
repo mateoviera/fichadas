@@ -26,10 +26,10 @@ Con Supabase:
 ### 2. Crear las tablas
 1. En el panel: **SQL Editor** → **New query**.
 2. Pegá todo el contenido de [`supabase/migrations/20261117000000_init.sql`](../supabase/migrations/20261117000000_init.sql) y tocá **Run**.
-3. Hacé lo mismo con [`supabase/migrations/20261119000000_gestion_personal.sql`](../supabase/migrations/20261119000000_gestion_personal.sql) (legajos, grupos y estado de vacaciones).
+3. Hacé lo mismo, en orden, con [`20261119000000_gestion_personal.sql`](../supabase/migrations/20261119000000_gestion_personal.sql) (legajos, grupos y estado de vacaciones) y [`20261120000000_sistema_personal.sql`](../supabase/migrations/20261120000000_sistema_personal.sql) (apellido y nombre, contacto, permisos por horas y última modificación).
 4. En **Table Editor** tienen que aparecer: `establishments`, `files`, `punches`, `employees`, `schedules`, `holidays`, `leaves`, `settings`, `vac_groups`.
 
-> **Si ya tenías la base creada**: al actualizar la app corré solo `20261119000000_gestion_personal.sql` **antes** de publicar la nueva versión. Se puede correr más de una vez.
+> **Si ya tenías la base creada**: al actualizar la app corré las migraciones nuevas (`20261119…` y `20261120…`) **antes** de publicar la nueva versión. Se pueden correr más de una vez.
 
 ### 3. Usuarios
 1. **Authentication → Sign In / Providers**: desactivá **Allow new users to sign up** (así nadie se puede registrar solo).
@@ -135,6 +135,7 @@ El entorno local del CLI de Supabase está pensado para desarrollo, pero para un
 ## Archivos relacionados
 - `supabase/migrations/…_init.sql` — tablas, permisos y datos iniciales.
 - `supabase/migrations/…_gestion_personal.sql` — legajo ampliado, grupos de vacaciones y estado de las licencias.
+- `supabase/migrations/…_sistema_personal.sql` — apellido y nombre, contacto, permisos por horas y última modificación.
 - `supabase/config.toml` — configuración de Supabase local (registro público desactivado).
 - `src/lib/remote.js` — lectura y guardado en Supabase.
 - `src/lib/store.js` — estado de la app; usa Supabase si hay variables, si no el navegador.
