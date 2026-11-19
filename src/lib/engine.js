@@ -25,23 +25,36 @@ export const INFO_LABELS = {
   manual: 'Fichada manual',
 };
 
-/** Duración en minutos de un bloque (soporta cruce de medianoche: 22:00 → 06:00 = 480). */
+/**
+ * Días después del ingreso en que termina el bloque: 0 = mismo día, 1 = día siguiente, 2 = a los dos días.
+ * Si el egreso es antes o igual que el ingreso, como mínimo es 1 (22:00 → 06:00).
+ * `endDays` permite estirarlo (ej. guardia de 48 h: 22:00 → 22:00 con endDays 2).
+ */
+export function endOffset(b) {
+  const s = hmToMin(b.start);
+  const e = hmToMin(b.end);
+  const base = e > s ? 0 : 1;
+  return Math.min(2, Math.max(base, Number(b.endDays) || 0));
+}
+
+/** Duración en minutos de un bloque (soporta cruce de medianoche: 22:00 → 06:00 = 480, y guardias de 48 h). */
 export function blockDuration(b) {
   const s = hmToMin(b.start);
   const e = hmToMin(b.end);
   if (s == null || e == null) return 0;
-  return e > s ? e - s : e + 1440 - s;
+  return e - s + 1440 * endOffset(b);
 }
 
 function blockLabel(b) {
-  return `${b.start}–${b.end}`;
+  const off = endOffset(b);
+  return `${b.start}–${b.end}${off > 1 ? ` (+${off})` : ''}`;
 }
 
-/** Turnos esperados (instancias) que "rodean" a un instante: día anterior, mismo día y siguiente. */
+/** Turnos esperados (instancias) que "rodean" a un instante: dos días antes (guardias de 48 h), día anterior, mismo día y siguiente. */
 function instancesAround(schedule, ts) {
   const out = [];
   const base = dateKey(ts);
-  for (const dk of [addDays(base, -1), base, addDays(base, 1)]) {
+  for (const dk of [addDays(base, -2), addDays(base, -1), base, addDays(base, 1)]) {
     out.push(...instancesForDay(schedule, dk));
   }
   return out;
@@ -68,7 +81,7 @@ function instancesForDay(schedule, dk) {
       dur: dur * MIN,
       est: b.est || '',
       label: blockLabel(b),
-      overnight: hmToMin(b.end) <= sMin,
+      overnight: endOffset(b) > 0,
     });
   });
   if (dayCache.size > 20000) dayCache.clear();
@@ -372,6 +385,58 @@ export function summarize(rows) {
   s.saldo = s.worked - s.expected;
   s.cumplimiento = s.evaluables ? Math.round((s.ok / s.evaluables) * 100) : null;
   return s;
+}
+
+/** Francos por semana de los rotativos: semana 1 (días 1–7), 2 (8–14), 3 (15–21) y 4 (22 al anteúltimo). */
+export const ROT_FRANCOS = [1, 2, 1, 2];
+
+/** Duración de turno más frecuente de un horario (en minutos). Ej.: rotativo de enfermería = 480. */
+export function shiftMinutes(schedule) {
+  const count = new Map();
+  for (const b of schedule?.blocks || []) {
+    const d = blockDuration(b);
+    if (d > 0) count.set(d, (count.get(d) || 0) + 1);
+  }
+  let best = 0;
+  let n = 0;
+  for (const [d, c] of count) if (c > n || (c === n && d > best)) [best, n] = [d, c];
+  return best;
+}
+
+/**
+ * Horas esperadas de un rotativo en un período.
+ * Cada mes se trabaja del día 1 al anteúltimo menos 6 francos (1, 2, 1 y 2 por semana).
+ * Solo cuentan los días con archivos cargados (isCovered) y sin licencia (isOff); si el período
+ * no cubre una semana completa, se prorratea.
+ * Devuelve { shiftMin, days, minutes, weeks: [{ from, to, len, francos, counted, days }] }.
+ */
+export function rotativoQuota({ schedule, from, to, isOff = () => false, isCovered = () => true }) {
+  const shiftMin = shiftMinutes(schedule);
+  const weeks = [];
+  let days = 0;
+  if (!from || !to || !shiftMin) return { shiftMin, days: 0, minutes: 0, weeks };
+  let month = from.slice(0, 7);
+  while (month <= to.slice(0, 7)) {
+    const [y, m] = month.split('-').map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const segs = [[1, 7], [8, 14], [15, 21], [22, last - 1]];
+    segs.forEach(([a, b], i) => {
+      const wFrom = `${month}-${String(a).padStart(2, '0')}`;
+      const wTo = `${month}-${String(b).padStart(2, '0')}`;
+      const len = b - a + 1;
+      let counted = 0;
+      for (const dk of eachDay(wFrom, wTo)) {
+        if (dk < from || dk > to || !isCovered(dk) || isOff(dk)) continue;
+        counted++;
+      }
+      const d = (counted * Math.max(0, len - ROT_FRANCOS[i])) / len;
+      days += d;
+      weeks.push({ from: wFrom, to: wTo, len, francos: ROT_FRANCOS[i], counted, days: Math.round(d * 100) / 100 });
+    });
+    month = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  }
+  days = Math.round(days * 100) / 100;
+  return { shiftMin, days, minutes: Math.round(days * shiftMin), weeks };
 }
 
 /** Texto corto para depurar / exportar. */

@@ -33,10 +33,11 @@ const empty = () => ({
   establishments: {}, // id -> { id, name, device, format, firmware }
   files: [], // { id, estId, name, loadedAt, count, from, to, format }
   punches: [], // { e, l, t, f, m?, id? }
-  employees: {}, // legajo -> { legajo, name, sector, scheduleId }
+  employees: {}, // legajo -> { legajo, name, sector, scheduleId, position, hireDate, exitDate, birthDate, dni, cuil, vacGroup }
   schedules: DEFAULT_SCHEDULES,
   holidays: [], // { date, name }
-  leaves: [], // { id, legajo, from, to, type }
+  leaves: [], // { id, legajo, from, to, type, status: 'aprobada'|'pendiente'|'rechazada', exception, note }
+  vacGroups: [], // { id, name, max (0 = sin control), note }
   settings: { ...DEFAULT_SETTINGS },
 });
 
@@ -223,7 +224,27 @@ export function removeHoliday(date) {
 }
 
 export function addLeave(leave) {
-  setState((s) => ({ ...s, leaves: s.leaves.concat({ id: uid(), ...leave }) }));
+  setState((s) => ({ ...s, leaves: s.leaves.concat({ id: uid(), status: 'aprobada', exception: false, note: '', ...leave }) }));
+}
+
+export function updateLeave(id, patch) {
+  setState((s) => ({ ...s, leaves: s.leaves.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+}
+
+export function saveVacGroup(group) {
+  setState((s) => {
+    const list = s.vacGroups || [];
+    const g = { id: group.id || uid(), name: '', max: 1, note: '', ...group };
+    return { ...s, vacGroups: list.some((x) => x.id === g.id) ? list.map((x) => (x.id === g.id ? g : x)) : list.concat(g) };
+  });
+}
+
+export function deleteVacGroup(id) {
+  setState((s) => ({
+    ...s,
+    vacGroups: (s.vacGroups || []).filter((g) => g.id !== id),
+    employees: Object.fromEntries(Object.entries(s.employees).map(([k, e]) => [k, e.vacGroup === id ? { ...e, vacGroup: '' } : e])),
+  }));
 }
 
 export function removeLeave(id) {
