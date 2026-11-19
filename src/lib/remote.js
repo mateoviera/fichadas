@@ -7,8 +7,9 @@
 // que cambiaron (alta/modificación → upsert, baja → delete), en orden y en lotes.
 import { createClient } from '@supabase/supabase-js';
 
-const URL = import.meta.env.VITE_SUPABASE_URL;
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const ENV = import.meta.env || {}; // fuera de Vite (pruebas con Node) no hay variables
+const URL = ENV.VITE_SUPABASE_URL;
+const KEY = ENV.VITE_SUPABASE_ANON_KEY;
 
 export const enabled = !!(URL && KEY);
 export const supabase = enabled ? createClient(URL, KEY) : null;
@@ -46,8 +47,16 @@ const COLLECTIONS = [
     name: 'employees',
     list: (s) => Object.values(s.employees),
     key: (x) => x.legajo,
-    toRow: (x) => ({ legajo: x.legajo, name: x.name || '', sector: x.sector || '', schedule_id: x.scheduleId || '' }),
-    fromRows: (rows) => Object.fromEntries(rows.map((r) => [r.legajo, { legajo: r.legajo, name: r.name, sector: r.sector, scheduleId: r.schedule_id }])),
+    toRow: (x) => ({
+      legajo: x.legajo, name: x.name || '', sector: x.sector || '', schedule_id: x.scheduleId || '',
+      position: x.position || '', hire_date: x.hireDate || null, exit_date: x.exitDate || null, birth_date: x.birthDate || null,
+      dni: x.dni || '', cuil: x.cuil || '', vac_group: x.vacGroup || '',
+    }),
+    fromRows: (rows) => Object.fromEntries(rows.map((r) => [r.legajo, {
+      legajo: r.legajo, name: r.name, sector: r.sector, scheduleId: r.schedule_id,
+      position: r.position || '', hireDate: r.hire_date || '', exitDate: r.exit_date || '', birthDate: r.birth_date || '',
+      dni: r.dni || '', cuil: r.cuil || '', vacGroup: r.vac_group || '',
+    }])),
     pk: 'legajo',
   },
   {
@@ -69,8 +78,16 @@ const COLLECTIONS = [
     name: 'leaves',
     list: (s) => s.leaves,
     key: (x) => x.id,
-    toRow: (x) => ({ id: x.id, legajo: x.legajo, date_from: x.from, date_to: x.to || x.from, type: x.type || '' }),
-    fromRows: (rows) => rows.map((r) => ({ id: r.id, legajo: r.legajo, from: r.date_from, to: r.date_to, type: r.type })),
+    toRow: (x) => ({ id: x.id, legajo: x.legajo, date_from: x.from, date_to: x.to || x.from, type: x.type || '', status: x.status || 'aprobada', exception: !!x.exception, note: x.note || '' }),
+    fromRows: (rows) => rows.map((r) => ({ id: r.id, legajo: r.legajo, from: r.date_from, to: r.date_to, type: r.type, status: r.status || 'aprobada', exception: !!r.exception, note: r.note || '' })),
+  },
+  {
+    name: 'vacGroups',
+    table: 'vac_groups',
+    list: (s) => s.vacGroups || [],
+    key: (x) => x.id,
+    toRow: (x) => ({ id: x.id, name: x.name || '', max_concurrent: Number(x.max) || 0, note: x.note || '' }),
+    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, max: r.max_concurrent || 0, note: r.note || '' })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
   },
 ];
 
@@ -87,13 +104,18 @@ export const subscribeSync = (l) => (statusListeners.add(l), () => statusListene
 
 /* ---------------- Lectura ---------------- */
 
+const MIGRATION_HINT = (e) =>
+  /does not exist|schema cache|column/i.test(e?.message || '')
+    ? '. Falta actualizar la base: en Supabase → SQL Editor corré supabase/migrations/20261119000000_gestion_personal.sql.'
+    : '';
+
 const PAGE = 1000; // máximo de filas por pedido que permite Supabase por defecto
 
 async function fetchAll(table) {
   const out = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase.from(table).select('*').order(table === 'employees' ? 'legajo' : table === 'holidays' ? 'date' : 'id').range(from, from + PAGE - 1);
-    if (error) throw new Error(`No se pudo leer ${table}: ${error.message}`);
+    if (error) throw new Error(`No se pudo leer ${table}: ${error.message}${MIGRATION_HINT(error)}`);
     out.push(...data);
     if (data.length < PAGE) return out;
   }
@@ -101,7 +123,7 @@ async function fetchAll(table) {
 
 /** Trae todos los datos de la base y los devuelve con la forma del estado de la app. */
 export async function loadAll(base) {
-  const results = await Promise.all([...COLLECTIONS.map((c) => fetchAll(c.name)), supabase.from('settings').select('data').eq('id', 1).maybeSingle()]);
+  const results = await Promise.all([...COLLECTIONS.map((c) => fetchAll(c.table || c.name)), supabase.from('settings').select('data').eq('id', 1).maybeSingle()]);
   const next = { ...base };
   COLLECTIONS.forEach((c, i) => (next[c.name] = c.fromRows(results[i])));
   const settingsRes = results[COLLECTIONS.length];
@@ -135,7 +157,7 @@ function diff(c, prev, next) {
 async function run(table, pk, { upserts, deletes }) {
   for (let i = 0; i < upserts.length; i += CHUNK_UPSERT) {
     const { error } = await supabase.from(table).upsert(upserts.slice(i, i + CHUNK_UPSERT), { onConflict: pk });
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) throw new Error(`${table}: ${error.message}${MIGRATION_HINT(error)}`);
     setStatus({ pending: Math.max(0, status.pending - Math.min(CHUNK_UPSERT, upserts.length - i)) });
   }
   for (let i = 0; i < deletes.length; i += CHUNK_DELETE) {
@@ -150,7 +172,7 @@ export function push(prev, next) {
   const jobs = [];
   for (const c of COLLECTIONS) {
     const d = diff(c, prev, next);
-    if (d) jobs.push([c.name, c.pk || 'id', d]);
+    if (d) jobs.push([c.table || c.name, c.pk || 'id', d]);
   }
   if (prev.settings !== next.settings) jobs.push(['settings', 'id', { upserts: [{ id: 1, data: next.settings }], deletes: [] }]);
   if (!jobs.length) return;

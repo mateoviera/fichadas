@@ -59,7 +59,7 @@ export default function Planilla({ items, state, from, to, estId }) {
             <Total label="Llegadas tarde" value={`${s.tarde}${s.tardeMin ? ` (${s.tardeMin} min)` : ''}`} bad={s.tarde > 0} />
             <Total label="Salidas anticipadas" value={`${s.anticipada}${s.anticipadaMin ? ` (${s.anticipadaMin} min)` : ''}`} bad={s.anticipada > 0} />
             <Total label="Incompletos" value={s.incompleto} bad={s.incompleto > 0} />
-            <Total label="Ausencias" value={s.ausente} bad={s.ausente > 0} />
+            {s.quota ? <Total label="Días esperados / turnos completos" value={`${s.quota.days} / ${s.daysWorked}`} bad={s.daysWorked < s.quota.days} /> : <Total label="Ausencias" value={s.ausente} bad={s.ausente > 0} />}
           </div>
           <p className="sheet-note">(M) fichada cargada a mano · (+1) egreso al día siguiente · Las horas sin fichada no se suman a las trabajadas.</p>
 

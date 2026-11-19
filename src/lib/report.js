@@ -1,4 +1,4 @@
-import { analyzeEmployee, summarize, ISSUE_LABELS, INFO_LABELS } from './engine.js';
+import { analyzeEmployee, summarize, rotativoQuota, ISSUE_LABELS, INFO_LABELS } from './engine.js';
 import { punchesByLegajo } from './store.js';
 import { DAY, keyToTs, dateKey, fmtTime, fmtDate, fmtDuration, WEEKDAYS_SHORT, weekday } from './time.js';
 
@@ -12,6 +12,9 @@ export const STATUS_FILTERS = [
   { id: 'fuera', label: 'Fuera de horario' },
   { id: 'ok', label: 'Cumplidos' },
 ];
+
+/** Licencias que cuentan para el control: las aprobadas (las viejas, sin estado, también). */
+export const leaveCounts = (l) => !l.status || l.status === 'aprobada';
 
 function rowMatches(r, status) {
   switch (status) {
@@ -41,6 +44,7 @@ export function computeReport(state, { from, to, estId = '', sector = '', q = ''
   const out = [];
   for (const l of legajos) {
     const emp = state.employees[l] || { legajo: l, name: '', sector: '', scheduleId: '' };
+    if (from && emp.exitDate && emp.exitDate < from) continue; // ya no trabaja en el período
     if (sector && (emp.sector || '') !== sector) continue;
     if (needle && !`${emp.legajo} ${emp.name}`.toLowerCase().includes(needle)) continue;
     const all = byLeg.get(l) || [];
@@ -48,24 +52,41 @@ export function computeReport(state, { from, to, estId = '', sector = '', q = ''
     if (estId && !ests.has(estId)) continue;
     const sch = schedById[emp.scheduleId] || null;
     const punches = all.filter((p) => p.t >= lo && p.t < hi);
+    const leaves = state.leaves.filter((x) => x.legajo === l && leaveCounts(x));
     let rows = analyzeEmployee({
       punches,
       schedule: sch,
       settings: state.settings,
       holidays,
-      leaves: state.leaves.filter((x) => x.legajo === l),
+      leaves,
       from,
       to,
       isCovered: (dk, est) => (est ? [est] : [...ests]).some((e) => covered(e, dk)),
     });
     if (estId) rows = rows.filter((r) => !r.est || r.est === estId);
     const summary = summarize(rows);
+    if (sch?.type === 'rotativo') {
+      // Rotativos: lo esperado es el cupo mensual (del 1 al anteúltimo menos 6 francos), no turno por turno.
+      const quota = rotativoQuota({
+        schedule: sch,
+        from,
+        to,
+        isCovered: (dk) => [...ests].some((e) => covered(e, dk)),
+        isOff: (dk) => (emp.hireDate && dk < emp.hireDate) || (emp.exitDate && dk > emp.exitDate) || leaves.some((x) => dk >= x.from && dk <= (x.to || x.from)),
+      });
+      summary.quota = quota;
+      summary.expected = quota.minutes;
+      summary.saldo = summary.worked - quota.minutes;
+      summary.daysWorked = rows.filter((r) => r.inst && r.entry && r.exit).length;
+    }
     const shown = rows.filter((r) => rowMatches(r, status));
-    if (!rows.length || (status !== 'todos' && !shown.length)) continue;
+    if ((!rows.length && !summary.quota?.minutes) || (status !== 'todos' && !shown.length)) continue;
     out.push({ emp, sch, rows: shown, allRows: rows, summary, ests: [...ests] });
   }
   out.sort((a, b) => (a.emp.name || '~').localeCompare(b.emp.name || '~', 'es') || Number(a.emp.legajo) - Number(b.emp.legajo));
   const total = summarize(out.flatMap((x) => x.allRows));
+  total.expected = out.reduce((a, x) => a + x.summary.expected, 0);
+  total.saldo = total.worked - total.expected;
   return { list: out, total };
 }
 
@@ -103,13 +124,13 @@ export function buildExportSheets(report, state) {
   ]];
   const summary = [[
     'Legajo', 'Nombre', 'Sector', 'Horario', 'Turnos', 'Cumplimiento %', 'Llegadas tarde', 'Minutos tarde',
-    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Saldo (h)', 'Horas extra',
+    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Saldo (h)', 'Horas extra', 'Días esperados (rotativo)', 'Turnos completos (rotativo)',
   ]];
   const h = (m) => Math.round((m / 60) * 100) / 100;
   for (const { emp, sch, rows, summary: s } of report.list) {
     summary.push([
       Number(emp.legajo), emp.name, emp.sector, sch?.name || 'Sin horario', s.turnos, s.cumplimiento ?? '', s.tarde, s.tardeMin,
-      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.sinFichada), h(s.expected), s.expected ? h(s.saldo) : '', h(s.extra),
+      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.sinFichada), h(s.expected), s.expected ? h(s.saldo) : '', h(s.extra), s.quota ? s.quota.days : '', s.quota ? s.daysWorked : '',
     ]);
     for (const r of rows) {
       const obs = rowObs(r);

@@ -219,6 +219,11 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
           <div className="emp-totals">
             <span>Trabajadas <b>{fmtDuration(s.worked)}</b></span>
             {s.sinFichada > 0 && <span>Sin fichada <b className="bad-text">{fmtDuration(s.sinFichada)}</b></span>}
+            {s.quota && (
+              <span title={s.quota.weeks.map((w) => `${w.from.slice(8)}–${w.to.slice(8)}/${w.from.slice(5, 7)}: ${w.days} días (${w.francos} franco${w.francos > 1 ? 's' : ''})`).join('\n')}>
+                Días esperados <b>{s.quota.days}</b> · turnos completos <b>{s.daysWorked}</b> · turno de {fmtDuration(s.quota.shiftMin)} h
+              </span>
+            )}
             {s.expected > 0 && <span>Esperadas <b>{fmtDuration(s.expected)}</b></span>}
             {s.expected > 0 && <span>Saldo <b className={s.saldo < 0 ? 'bad-text' : 'ok-text'}>{fmtSigned(s.saldo)}</b></span>}
             {s.extra > 0 && <span>Extra <b>{fmtDuration(s.extra)}</b></span>}

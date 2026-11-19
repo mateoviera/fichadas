@@ -234,6 +234,26 @@ td.nowrap, th.nowrap { white-space: nowrap; }
 .notice { padding: 10px 14px; border-radius: 8px; background: var(--info-soft); color: var(--info); font-size: 13px; }
 .notice.warn { background: var(--warn-soft); color: var(--warn); }
 
+/* Gestión del personal: calendario de vacaciones y miembros de grupos */
+.cal { border-collapse: collapse; font-size: 11.5px; }
+.cal th, .cal td { padding: 0; border-bottom: 1px solid var(--line); text-align: center; min-width: 22px; height: 26px; }
+.cal th { font-weight: 500; color: var(--muted); line-height: 1.1; }
+.cal th span { display: block; font-size: 10px; opacity: .8; }
+.cal .cal-name { text-align: left; padding: 4px 12px 4px 16px; white-space: nowrap; min-width: 180px; position: sticky; left: 0; background: var(--surface); color: var(--ink); }
+.cal th.cal-name { font-weight: 600; }
+.cal .we { background: var(--sunken); }
+.cal td.on.ok { background: var(--ok-soft); box-shadow: inset 0 -3px 0 var(--ok); }
+.cal td.on.warn { background: var(--warn-soft); box-shadow: inset 0 -3px 0 var(--warn); }
+.cal td.on.bad { background: var(--bad-soft); box-shadow: inset 0 -3px 0 var(--bad); }
+.cal-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
+.cal-key.ok { background: var(--ok); }
+.cal-key.warn { background: var(--warn); }
+.cal-key.bad { background: var(--bad); }
+.members { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 2px; }
+.members li { padding: 2px 0; }
+.members li > span:first-child { margin-right: 8px; }
+.members li .btn { margin-left: 6px; }
+
 @media (max-width: 640px) {
   .nav { margin-left: 0; width: 100%; }
   .emp-head { grid-template-columns: 1fr; }

@@ -4,6 +4,7 @@ import { useStore, CLOUD, loadFromCloud } from './lib/store.js';
 import { supabase, getSyncStatus, subscribeSync } from './lib/remote.js';
 import Reporte from './views/Reporte.jsx';
 import Personal from './views/Personal.jsx';
+import Gestion from './views/Gestion.jsx';
 import Horarios from './views/Horarios.jsx';
 import Archivos from './views/Archivos.jsx';
 import Ajustes from './views/Ajustes.jsx';
@@ -12,6 +13,7 @@ import Login from './views/Login.jsx';
 const TABS = [
   ['fichadas', 'Fichadas'],
   ['personal', 'Personal'],
+  ['gestion', 'Gestión del personal'],
   ['horarios', 'Horarios'],
   ['archivos', 'Archivos'],
   ['ajustes', 'Ajustes'],
@@ -111,6 +113,7 @@ function Main({ user }) {
       <main>
         {tab === 'fichadas' && <Reporte />}
         {tab === 'personal' && <Personal />}
+        {tab === 'gestion' && <Gestion />}
         {tab === 'horarios' && <Horarios />}
         {tab === 'archivos' && <Archivos/>}
         {tab === 'ajustes' && <Ajustes />}

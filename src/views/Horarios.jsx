@@ -1,5 +1,5 @@
 import { useStore, saveSchedule, newSchedule, deleteSchedule } from '../lib/store.js';
-import { blockDuration } from '../lib/engine.js';
+import { blockDuration, endOffset } from '../lib/engine.js';
 import { fmtDuration, WEEKDAYS_LETTER, hmToMin } from '../lib/time.js';
 import { ConfirmButton, EstSelect, TimeInput } from '../components/ui.jsx';
 
@@ -16,7 +16,7 @@ export default function Horarios() {
       <div className="page-head">
         <div>
           <h2>Horarios pactados</h2>
-          <p>Creá un horario una vez y asignalo a varias personas. «Fijo» controla días y horas, y detecta ausencias. «Rotativo» es para enfermería y guardias: cada fichada se asocia al turno más cercano, incluido el nocturno que termina al día siguiente.</p>
+          <p>Creá un horario una vez y asignalo a varias personas. «Fijo» controla días y horas, y detecta ausencias. «Rotativo» es para enfermería: cada fichada se asocia al turno más cercano, incluido el nocturno que termina al día siguiente, y las horas esperadas del mes son del día 1 al anteúltimo menos 6 francos (1, 2, 1 y 2 por semana). Para guardias de 48 h elegí «egreso a los 2 días».</p>
         </div>
         <div className="row">
           <button className="btn" onClick={() => newSchedule('rotativo')}>Nuevo rotativo</button>
@@ -75,7 +75,11 @@ function ScheduleCard({ s, used, establishments }) {
               <span className="arrow">→</span>
               <TimeInput id={`be-${s.id}-${i}`} value={b.end} onChange={(v) => setBlock(i, { end: v })} aria-label="Egreso" />
               <span className="num muted">{fmtDuration(blockDuration(b))} h</span>
-              {overnight && <span className="pill info">egreso día siguiente</span>}
+              <select id={`bd-${s.id}-${i}`} className="input" style={{ width: 'auto' }} value={endOffset(b)} onChange={(e) => setBlock(i, { endDays: Number(e.target.value) })} aria-label="Día del egreso">
+                {!overnight && <option value={0}>egreso el mismo día</option>}
+                <option value={1}>egreso al día siguiente</option>
+                <option value={2}>egreso a los 2 días (48 h)</option>
+              </select>
               <span className="spacer" />
               <EstSelect id={`bx-${s.id}-${i}`} establishments={establishments} value={b.est || ''} onChange={(v) => setBlock(i, { est: v })} allLabel="Cualquier establecimiento" />
               <button className="btn sm ghost danger" onClick={() => set({ blocks: s.blocks.filter((_, j) => j !== i) })} disabled={s.blocks.length === 1} aria-label="Quitar bloque">Quitar</button>

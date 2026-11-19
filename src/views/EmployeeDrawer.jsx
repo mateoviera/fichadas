@@ -40,7 +40,7 @@ export default function EmployeeDrawer({ legajo, onClose }) {
 
       <div className="stack">
         <div className="section-title">Licencias y novedades</div>
-        <p className="muted small">Los días cubiertos no cuentan como ausencia.</p>
+        <p className="muted small">Los días cubiertos no cuentan como ausencia. Lo que cargues acá queda aprobado; para pedidos de vacaciones con control de superposición usá <a href="#gestion">Gestión del personal</a>.</p>
         <div className="row">
           <input id="lv-from" type="date" className="input" value={lv.from} onChange={(e) => setLv({ ...lv, from: e.target.value, to: lv.to < e.target.value ? e.target.value : lv.to })} />
           <span className="arrow">→</span>
@@ -57,6 +57,7 @@ export default function EmployeeDrawer({ legajo, onClose }) {
             {leaves.map((l) => (
               <div key={l.id} className="row">
                 <span><b>{l.type}</b> <span className="muted small">{fmtDate(l.from)}{l.to !== l.from ? ` al ${fmtDate(l.to)}` : ''}</span></span>
+                {l.status && l.status !== 'aprobada' && <span className={`pill ${l.status === 'pendiente' ? 'warn' : 'neutral'}`} title="Solo las aprobadas cuentan en el control. Se gestionan en Gestión del personal.">{l.status === 'pendiente' ? 'Pendiente' : 'Rechazada'}</span>}
                 <span className="spacer" />
                 <ConfirmButton confirmLabel="Quitar" onConfirm={() => removeLeave(l.id)}>Quitar</ConfirmButton>
               </div>
