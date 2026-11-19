@@ -31,7 +31,7 @@ export default function Horarios() {
   );
 }
 
-function ScheduleCard({ s, used, establishments }) {
+export function ScheduleCard({ s, used, establishments }) {
   const set = (patch) => saveSchedule({ ...s, ...patch });
   const setBlock = (i, patch) => set({ blocks: s.blocks.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   const addBlock = () => {

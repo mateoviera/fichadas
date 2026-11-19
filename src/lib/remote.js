@@ -51,11 +51,15 @@ const COLLECTIONS = [
       legajo: x.legajo, name: x.name || '', sector: x.sector || '', schedule_id: x.scheduleId || '',
       position: x.position || '', hire_date: x.hireDate || null, exit_date: x.exitDate || null, birth_date: x.birthDate || null,
       dni: x.dni || '', cuil: x.cuil || '', vac_group: x.vacGroup || '',
+      first_name: x.firstName || '', last_name: x.lastName || '', phone: x.phone || '', email: x.email || '', notes: x.notes || '',
+      updated_at: x.updatedAt || null, updated_by: x.updatedBy || '',
     }),
     fromRows: (rows) => Object.fromEntries(rows.map((r) => [r.legajo, {
       legajo: r.legajo, name: r.name, sector: r.sector, scheduleId: r.schedule_id,
       position: r.position || '', hireDate: r.hire_date || '', exitDate: r.exit_date || '', birthDate: r.birth_date || '',
       dni: r.dni || '', cuil: r.cuil || '', vacGroup: r.vac_group || '',
+      firstName: r.first_name || '', lastName: r.last_name || '', phone: r.phone || '', email: r.email || '', notes: r.notes || '',
+      updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '',
     }])),
     pk: 'legajo',
   },
@@ -63,8 +67,8 @@ const COLLECTIONS = [
     name: 'schedules',
     list: (s) => s.schedules,
     key: (x) => x.id,
-    toRow: (x) => ({ id: x.id, name: x.name || '', type: x.type, blocks: x.blocks || [], v: x._v || '' }),
-    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, type: r.type, blocks: r.blocks, _v: r.v || '' })),
+    toRow: (x) => ({ id: x.id, name: x.name || '', type: x.type, blocks: x.blocks || [], v: x._v || '', updated_at: x.updatedAt || null, updated_by: x.updatedBy || '' }),
+    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, type: r.type, blocks: r.blocks, _v: r.v || '', updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '' })),
   },
   {
     name: 'holidays',
@@ -78,16 +82,22 @@ const COLLECTIONS = [
     name: 'leaves',
     list: (s) => s.leaves,
     key: (x) => x.id,
-    toRow: (x) => ({ id: x.id, legajo: x.legajo, date_from: x.from, date_to: x.to || x.from, type: x.type || '', status: x.status || 'aprobada', exception: !!x.exception, note: x.note || '' }),
-    fromRows: (rows) => rows.map((r) => ({ id: r.id, legajo: r.legajo, from: r.date_from, to: r.date_to, type: r.type, status: r.status || 'aprobada', exception: !!r.exception, note: r.note || '' })),
+    toRow: (x) => ({
+      id: x.id, legajo: x.legajo, date_from: x.from, date_to: x.to || x.from, type: x.type || '', status: x.status || 'aprobada', exception: !!x.exception, note: x.note || '',
+      start_time: x.startTime || '', end_time: x.endTime || '', created_at: x.createdAt || null, updated_at: x.updatedAt || null, updated_by: x.updatedBy || '',
+    }),
+    fromRows: (rows) => rows.map((r) => ({
+      id: r.id, legajo: r.legajo, from: r.date_from, to: r.date_to, type: r.type, status: r.status || 'aprobada', exception: !!r.exception, note: r.note || '',
+      startTime: r.start_time || '', endTime: r.end_time || '', createdAt: Number(r.created_at) || null, updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '',
+    })),
   },
   {
     name: 'vacGroups',
     table: 'vac_groups',
     list: (s) => s.vacGroups || [],
     key: (x) => x.id,
-    toRow: (x) => ({ id: x.id, name: x.name || '', max_concurrent: Number(x.max) || 0, note: x.note || '' }),
-    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, max: r.max_concurrent || 0, note: r.note || '' })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
+    toRow: (x) => ({ id: x.id, name: x.name || '', max_concurrent: Number(x.max) || 0, note: x.note || '', updated_at: x.updatedAt || null, updated_by: x.updatedBy || '' }),
+    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, max: r.max_concurrent || 0, note: r.note || '', updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '' })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
   },
 ];
 
@@ -106,7 +116,7 @@ export const subscribeSync = (l) => (statusListeners.add(l), () => statusListene
 
 const MIGRATION_HINT = (e) =>
   /does not exist|schema cache|column/i.test(e?.message || '')
-    ? '. Falta actualizar la base: en Supabase → SQL Editor corré supabase/migrations/20261119000000_gestion_personal.sql.'
+    ? '. Falta actualizar la base: en Supabase → SQL Editor corré supabase/migrations/20261120000000_sistema_personal.sql (y antes 20261119000000_gestion_personal.sql si no lo corriste).'
     : '';
 
 const PAGE = 1000; // máximo de filas por pedido que permite Supabase por defecto

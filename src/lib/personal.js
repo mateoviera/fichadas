@@ -2,6 +2,41 @@
 import { eachDay, keyToTs, DAY, weekday, todayKey } from './time.js';
 
 export const VACATION = 'Vacaciones';
+export const HOURS = 'Permiso por horas';
+
+/**
+ * Tipos de solicitud. `fullDay`: ocupa días completos (cuenta para la disponibilidad del grupo y
+ * excusa ausencias en Fichadas). Los permisos por horas solo quedan registrados.
+ */
+export const REQUEST_TYPES = [
+  { id: VACATION, tone: 'vac', fullDay: true },
+  { id: 'Día particular', tone: 'day', fullDay: true },
+  { id: 'Franco compensatorio', tone: 'day', fullDay: true },
+  { id: 'Licencia médica', tone: 'med', fullDay: true },
+  { id: 'Licencia por examen', tone: 'other', fullDay: true },
+  { id: 'Capacitación', tone: 'other', fullDay: true },
+  { id: HOURS, tone: 'hours', fullDay: false },
+  { id: 'Otra', tone: 'other', fullDay: true },
+];
+const TYPE = Object.fromEntries(REQUEST_TYPES.map((t) => [t.id, t]));
+export const typeInfo = (id) => TYPE[id] || { id, tone: 'other', fullDay: true };
+export const isFullDay = (l) => typeInfo(l.type).fullDay;
+
+/** "19/11/2026 14:32 · nombre" para mostrar la última modificación. */
+export function fmtStamp(x) {
+  if (!x?.updatedAt) return '';
+  const d = new Date(x.updatedAt);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}${x.updatedBy ? ` · ${x.updatedBy}` : ''}`;
+}
+
+/** Horas de un permiso por horas (en minutos). */
+export function requestMinutes(l) {
+  if (!l.startTime || !l.endTime) return 0;
+  const [h1, m1] = l.startTime.split(':').map(Number);
+  const [h2, m2] = l.endTime.split(':').map(Number);
+  return Math.max(0, h2 * 60 + m2 - (h1 * 60 + m1));
+}
 
 /** Antigüedad entre la fecha de ingreso y `at` (ambas 'YYYY-MM-DD'). */
 export function seniority(hireDate, at = todayKey()) {
@@ -65,7 +100,7 @@ export function seniorityCompare(a, b) {
 }
 
 /**
- * Superposición de vacaciones dentro de cada grupo.
+ * Superposición de solicitudes de días completos (vacaciones, días particulares, licencias…) dentro de cada grupo.
  * En cada día, si hay más personas de vacaciones que el máximo del grupo, conservan el lugar las de mayor
  * antigüedad y las demás quedan "en conflicto". No cuentan las rechazadas ni las aprobadas como excepción.
  * Devuelve Map(leaveId -> { days: n° de días en conflicto, blockedBy: Set(legajo), displaces: Set(legajo) }).
@@ -75,7 +110,7 @@ export function vacationConflicts(state) {
   const result = new Map();
   const byGroup = new Map();
   for (const l of state.leaves) {
-    if (l.type !== VACATION || l.status === 'rechazada' || l.exception) continue;
+    if (!isFullDay(l) || l.status === 'rechazada' || l.exception) continue;
     const emp = state.employees[l.legajo];
     const g = emp && groups.get(emp.vacGroup);
     if (!g || !(Number(g.max) > 0)) continue;
@@ -125,3 +160,69 @@ export function vacationBalance(emp, leaves, year) {
   const pending = sum('pendiente');
   return { corr, approved, pending, left: corr ? corr.days - approved : null };
 }
+
+/**
+ * Revisa una solicitud antes de guardarla o aprobarla. Devuelve la lista de motivos por los que
+ * no debería permitirse (vacía si está todo bien). Cada motivo: { title, detail }.
+ * `draft` = { id?, legajo, type, from, to, status }.
+ */
+export function checkRequest(state, draft) {
+  const out = [];
+  if (!draft.legajo || !draft.from || draft.status === 'rechazada') return out;
+  const emps = state.employees;
+  const emp = emps[draft.legajo] || { legajo: draft.legajo };
+  const to = draft.to || draft.from;
+  const nameOf = (l) => emps[l]?.name || `legajo ${l}`;
+  const overlaps = (l) => l.from <= to && (l.to || l.from) >= draft.from;
+  const others = state.leaves.filter((l) => l.id !== draft.id && l.status !== 'rechazada' && overlaps(l));
+
+  if (emp.hireDate && draft.from < emp.hireDate) out.push({ title: 'Antes de la fecha de ingreso', detail: `Ingresó el ${fmtKey(emp.hireDate)}.` });
+  if (emp.exitDate && to > emp.exitDate) out.push({ title: 'Después de la fecha de baja', detail: `Tiene baja el ${fmtKey(emp.exitDate)}.` });
+
+  const own = others.filter((l) => l.legajo === draft.legajo);
+  if (own.length) {
+    out.push({ title: 'Ya tiene otra solicitud esos días', detail: own.map((l) => `${l.type} del ${fmtKey(l.from)} al ${fmtKey(l.to || l.from)}`).join(' · ') });
+  }
+
+  // Disponibilidad del grupo: cuántas personas del grupo ya faltan esos días.
+  const group = (state.vacGroups || []).find((g) => g.id === emp.vacGroup);
+  if (group && Number(group.max) > 0 && typeInfo(draft.type).fullDay) {
+    const mates = others.filter((l) => l.legajo !== draft.legajo && emps[l.legajo]?.vacGroup === group.id && isFullDay(l));
+    const busy = new Map();
+    for (const dk of eachDay(draft.from, to)) {
+      const that = mates.filter((l) => dk >= l.from && dk <= (l.to || l.from));
+      if (that.length >= Number(group.max)) busy.set(dk, that);
+    }
+    if (busy.size) {
+      const who = [...new Set([...busy.values()].flat().map((l) => l.legajo))];
+      const senior = who.filter((l) => seniorityCompare(emps[l], emp) < 0);
+      const junior = who.filter((l) => !senior.includes(l));
+      const days = [...busy.keys()];
+      const parts = [`En el grupo «${group.name}» ${Number(group.max) === 1 ? 'no puede faltar más de una persona' : `pueden faltar hasta ${group.max} personas`} a la vez.`];
+      parts.push(`Se pisa ${days.length === 1 ? `el ${fmtKey(days[0])}` : `${days.length} días (del ${fmtKey(days[0])} al ${fmtKey(days[days.length - 1])})`} con ${who.map(nameOf).join(', ')}.`);
+      if (senior.length) parts.push(`${senior.map(nameOf).join(', ')} ${senior.length === 1 ? 'tiene' : 'tienen'} más antigüedad y prioridad.`);
+      if (junior.length) parts.push(`${fmtNames(junior, nameOf)} ${junior.length === 1 ? 'tiene' : 'tienen'} menos antigüedad: ${junior.length === 1 ? 'su solicitud quedaría' : 'sus solicitudes quedarían'} desplazada${junior.length === 1 ? '' : 's'}.`);
+      out.push({ title: 'Se pisa con otras personas del grupo', detail: parts.join(' ') });
+    }
+  }
+
+  if (draft.type === VACATION) {
+    const year = Number(draft.from.slice(0, 4));
+    const corr = vacationDays(emp.hireDate, year);
+    if (!corr) {
+      out.push({ title: 'No se pueden validar los días', detail: 'Falta la fecha de ingreso para calcular cuántos días de vacaciones le corresponden.' });
+    } else {
+      const used = state.leaves
+        .filter((l) => l.id !== draft.id && l.legajo === draft.legajo && l.type === VACATION && l.status !== 'rechazada' && l.from.startsWith(String(year)))
+        .reduce((a, l) => a + leaveLength(l), 0);
+      const want = leaveLength({ from: draft.from, to });
+      if (used + want > corr.days) {
+        out.push({ title: 'Supera los días de vacaciones', detail: `Le corresponden ${corr.days} días en ${year}; ya tiene ${used} cargados y pide ${want} (se pasa por ${used + want - corr.days}).` });
+      }
+    }
+  }
+  return out;
+}
+
+const fmtKey = (k) => k.split('-').reverse().join('/');
+const fmtNames = (legs, nameOf) => legs.map(nameOf).join(', ');

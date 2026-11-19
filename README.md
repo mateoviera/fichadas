@@ -1,6 +1,6 @@
-# Control de Fichadas
+# Gestión de Personal
 
-Web en React para leer los TXT de los relojes ProSoft de cada establecimiento y controlar si cada persona cumple su horario pactado de ingreso y egreso.
+Sistema web (React) de gestión de empleados: legajos, horarios, vacaciones y solicitudes, y control de fichadas a partir de los TXT de los relojes ProSoft de cada establecimiento.
 
 ## Cómo ponerla en marcha
 
@@ -27,20 +27,27 @@ Web en React para leer los TXT de los relojes ProSoft de cada establecimiento y 
 
 ## Uso diario
 
-1. **Archivos**: arrastrá los TXT del reloj. La web detecta el formato, muestra cuántas fichadas, legajos y fechas trae, y te pide a qué establecimiento corresponde. La próxima vez que cargues un archivo con el mismo nombre se asigna solo al mismo establecimiento. Las fichadas repetidas se ignoran, así que podés cargar el mismo reloj todos los meses sin problema.
-2. **Horarios**: creá los horarios pactados una vez.
-   - **Fijo**: días de la semana + hora de ingreso y egreso. Admite varios bloques (horario cortado, o sábados distintos) y detecta ausencias.
-   - **Rotativo**: lista de turnos posibles (por defecto Enfermería 06–14, 14–22, 22–06). Cada ingreso se asocia al turno más cercano. El turno 22–06 queda registrado en el día del ingreso y el egreso se busca al día siguiente. No se marcan ausencias: se controlan las **horas esperadas del mes**, que son del día 1 al anteúltimo menos 6 francos (1 la primera semana, 2 la segunda, 1 la tercera y 2 la cuarta), descontando licencias aprobadas.
-   - Cada bloque indica cuándo es el egreso: el mismo día, al día siguiente o **a los 2 días** (guardias de 48 h, ej. domingo 22:00 → martes 22:00).
-   - Cada bloque puede limitarse a un establecimiento (para quien trabaja de mañana en un lugar y de tarde en otro).
-3. **Personal**: completá nombre (los relojes UDISKLOG no lo traen) y sector, y asigná el horario. Podés seleccionar varios y asignar en lote, o importar un CSV con columnas `legajo;nombre;sector;horario` (el horario se busca por nombre).
-4. **Fichadas**: elegí el mes, el establecimiento, el sector o el estado. Cada persona muestra su % de cumplimiento, tardanzas, salidas anticipadas, turnos incompletos y ausencias. Expandí para ver turno por turno, con los minutos de diferencia.
-5. En el **Detalle** de cada persona podés cargar licencias (vacaciones, licencia médica, etc.) y fichadas manuales para olvidos.
-6. **Gestión del personal**:
-   - **Legajos y antigüedad**: fecha de ingreso y egreso, puesto, DNI y CUIL. La antigüedad y los días de vacaciones se calculan solos según la LCT (14, 21, 28 o 35 días corridos según la antigüedad al 31/12; si ingresó en el año y no trabajó la mitad, 1 día cada 20 hábiles). Quien tiene fecha de egreso deja de aparecer en Fichadas.
-   - **Grupos de vacaciones**: cuántas personas del grupo pueden estar de vacaciones a la vez (o «sin control»).
-   - **Vacaciones**: los pedidos se cargan como pendientes. Si dentro de un grupo se superponen de más, tiene prioridad la persona más antigua y la otra queda marcada; se puede rechazar, cambiar fechas o aprobar como excepción. Solo las vacaciones aprobadas cuentan en el control de fichadas. Incluye un calendario mensual por grupo.
-7. **Exportar**: Excel (hojas Resumen y Detalle), CSV o Imprimir / PDF.
+La app tiene cuatro secciones:
+
+1. **Personal**: todo el personal con apellido, nombre, legajo, DNI, puesto, horario, antigüedad, grupo y **última modificación** (cuándo y quién). Se puede buscar, filtrar por sector o estado (activos / de baja), asignar en lote, importar y exportar CSV, agregar personas y abrir la **ficha** de cada una:
+   - **Datos**: apellido y nombre por separado, DNI, CUIL, nacimiento, contacto, puesto, sector, fecha de ingreso (antigüedad) y de baja, grupo de vacaciones y notas.
+   - **Horario**: elegir un modelo o crear un horario propio y editarlo ahí mismo.
+   - **Vacaciones y solicitudes**: saldo del año y solicitudes de la persona.
+   - **Fichadas manuales**: para olvidos o fallas del reloj.
+   - Al pie: última modificación, **Dar de baja** (deja de aparecer en Fichadas) y **Eliminar**.
+2. **Fichadas**: elegí el mes, el establecimiento, el sector o el estado. Arriba se ven solo cinco números (cumplimiento, llegadas tarde, salidas antes de hora, falta entrada o salida, ausencias) con una explicación plegable. Al abrir una persona se ven sus horas (trabajadas, las que debía trabajar y la diferencia) y el detalle día por día. Exporta a Excel, CSV o PDF.
+3. **Vacaciones y solicitudes**: vacaciones, días particulares, francos, licencias y permisos por horas.
+   - **Calendario** interactivo por grupo: tocá un día y después otro en la fila de una persona para cargar una solicitud; tocá una solicitud para verla o cambiarla. Cada grupo muestra cuántas personas faltan cada día contra el máximo permitido.
+   - **Solicitudes**: lista con filtros, aprobar / rechazar y última modificación.
+   - **Grupos**: cuántas personas pueden faltar a la vez (o «sin control»), con prioridad por antigüedad.
+   - Si algo no corresponde (se pisa con alguien del grupo, supera los días de vacaciones según la LCT, ya tiene otra solicitud, está fuera de la fecha de ingreso o de baja), aparece un **aviso** con el motivo que pregunta si se quiere hacer igual; si se acepta queda marcado como **excepción**.
+   - Solo las solicitudes aprobadas de días completos excusan ausencias en Fichadas.
+4. **Configuración**:
+   - **Horarios**: modelos compartidos. **Fijo** (días y horas, detecta ausencias, varios bloques, egreso el mismo día, al siguiente o a los 2 días para guardias de 48 h) o **Rotativo** (cada fichada se asocia al turno más cercano; las horas esperadas del mes son del día 1 al anteúltimo menos 6 francos —1, 2, 1 y 2 por semana— descontando licencias aprobadas). Cada bloque puede limitarse a un establecimiento.
+   - **Archivos del reloj**: arrastrá los TXT. Se detecta el formato y se pide el establecimiento (se recuerda por nombre de archivo). Las fichadas repetidas se ignoran.
+   - **Ajustes**: tolerancias, feriados y copias de seguridad.
+
+Los días de vacaciones se calculan según la LCT: 14, 21, 28 o 35 días corridos según la antigüedad al 31/12; si ingresó en el año y no trabajó la mitad, 1 día cada 20 hábiles.
 
 ## Cómo interpreta las fichadas
 
@@ -81,8 +88,10 @@ src/
   lib/store.js      datos guardados y acciones
   lib/xlsx.js       generador de Excel sin dependencias
   lib/io.js         CSV, descargas y feriados
-  lib/personal.js   antigüedad, vacaciones según la LCT y superposición por grupo
-  views/            pantallas: Fichadas, Personal, Gestión del personal, Horarios, Archivos, Ajustes
+  lib/personal.js   antigüedad, vacaciones (LCT), tipos de solicitud, superposición y avisos
+  lib/schedule.js   textos legibles de los horarios
+  components/       diálogos, ventana de solicitud y piezas comunes
+  views/            pantallas: Personal (y ficha), Fichadas, Vacaciones y solicitudes, Horarios, Archivos, Ajustes
   samples/          los dos TXT de ejemplo
 tests/              pruebas del motor con los TXT reales (npm test)
 ```

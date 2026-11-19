@@ -1,5 +1,6 @@
 import { analyzeEmployee, summarize, rotativoQuota, ISSUE_LABELS, INFO_LABELS } from './engine.js';
 import { punchesByLegajo } from './store.js';
+import { isFullDay } from './personal.js';
 import { DAY, keyToTs, dateKey, fmtTime, fmtDate, fmtDuration, WEEKDAYS_SHORT, weekday } from './time.js';
 
 export const STATUS_FILTERS = [
@@ -13,8 +14,8 @@ export const STATUS_FILTERS = [
   { id: 'ok', label: 'Cumplidos' },
 ];
 
-/** Licencias que cuentan para el control: las aprobadas (las viejas, sin estado, también). */
-export const leaveCounts = (l) => !l.status || l.status === 'aprobada';
+/** Solicitudes que excusan días en Fichadas: las aprobadas de días completos (los permisos por horas no). */
+export const leaveCounts = (l) => (!l.status || l.status === 'aprobada') && isFullDay(l);
 
 function rowMatches(r, status) {
   switch (status) {

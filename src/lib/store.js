@@ -9,6 +9,21 @@ export const CLOUD = remote.enabled;
 const KEY = 'fichadas:v1';
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/* ---------------- Última modificación ---------------- */
+// Cada alta o cambio de persona, horario, solicitud o grupo guarda cuándo y quién lo hizo.
+let actor = CLOUD ? '' : 'Este equipo';
+export function setActor(name) {
+  actor = name || actor;
+}
+const stamp = () => ({ updatedAt: Date.now(), updatedBy: actor });
+
+/** "Apellido Nombre" a partir de los campos separados. */
+export function fullName(e) {
+  if (!e) return '';
+  if (e.lastName || e.firstName) return `${e.lastName || ''} ${e.firstName || ''}`.trim();
+  return e.name || '';
+}
+
 export const DEFAULT_SCHEDULES = [
   {
     id: 'enf-rot',
@@ -33,11 +48,11 @@ const empty = () => ({
   establishments: {}, // id -> { id, name, device, format, firmware }
   files: [], // { id, estId, name, loadedAt, count, from, to, format }
   punches: [], // { e, l, t, f, m?, id? }
-  employees: {}, // legajo -> { legajo, name, sector, scheduleId, position, hireDate, exitDate, birthDate, dni, cuil, vacGroup }
+  employees: {}, // legajo -> { legajo, name, lastName, firstName, sector, scheduleId, position, hireDate, exitDate, birthDate, dni, cuil, phone, email, notes, vacGroup, updatedAt, updatedBy }
   schedules: DEFAULT_SCHEDULES,
   holidays: [], // { date, name }
-  leaves: [], // { id, legajo, from, to, type, status: 'aprobada'|'pendiente'|'rechazada', exception, note }
-  vacGroups: [], // { id, name, max (0 = sin control), note }
+  leaves: [], // solicitudes: { id, legajo, from, to, type, status: 'aprobada'|'pendiente'|'rechazada', exception, note, startTime?, endTime?, createdAt, updatedAt, updatedBy }
+  vacGroups: [], // { id, name, max (0 = sin control), note, updatedAt, updatedBy }
   settings: { ...DEFAULT_SETTINGS },
 });
 
@@ -163,27 +178,52 @@ export function renameEstablishment(id, name) {
 }
 
 export function upsertEmployee(legajo, patch) {
-  setState((s) => ({
-    ...s,
-    employees: {
-      ...s.employees,
-      [legajo]: { legajo, name: '', sector: '', scheduleId: '', ...s.employees[legajo], ...patch },
-    },
-  }));
+  setState((s) => {
+    const next = { legajo, name: '', sector: '', scheduleId: '', ...s.employees[legajo], ...patch, ...stamp() };
+    if ('lastName' in patch || 'firstName' in patch) next.name = fullName(next);
+    return { ...s, employees: { ...s.employees, [legajo]: next } };
+  });
 }
 
 export function bulkAssign(legajos, patch) {
   setState((s) => {
     const employees = { ...s.employees };
-    legajos.forEach((l) => (employees[l] = { ...employees[l], ...patch }));
+    legajos.forEach((l) => (employees[l] = { ...employees[l], ...patch, ...stamp() }));
     return { ...s, employees };
   });
+}
+
+/** Borra a la persona y sus solicitudes. Las fichadas del reloj se conservan. */
+export function deleteEmployee(legajo) {
+  setState((s) => {
+    const employees = { ...s.employees };
+    delete employees[legajo];
+    return { ...s, employees, leaves: s.leaves.filter((l) => l.legajo !== legajo) };
+  });
+}
+
+/** Crea un horario propio para la persona (copiando el que tenga) y se lo asigna. */
+export function createOwnSchedule(legajo) {
+  const s = state;
+  const emp = s.employees[legajo] || { legajo };
+  const base = s.schedules.find((x) => x.id === emp.scheduleId);
+  let id = `prof-${legajo}`;
+  if (s.schedules.some((x) => x.id === id)) id = `prof-${legajo}-${uid()}`;
+  const sch = {
+    id,
+    name: `${fullName(emp) || 'Legajo ' + legajo} (leg. ${legajo})`,
+    type: base?.type || 'fijo',
+    blocks: base ? base.blocks.map((b) => ({ ...b })) : [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', est: '' }],
+  };
+  saveSchedule(sch);
+  upsertEmployee(legajo, { scheduleId: id });
+  return id;
 }
 
 export function saveSchedule(sch) {
   setState((s) => {
     const exists = s.schedules.some((x) => x.id === sch.id);
-    const next = { ...sch, _v: uid() };
+    const next = { ...sch, _v: uid(), ...stamp() };
     return { ...s, schedules: exists ? s.schedules.map((x) => (x.id === sch.id ? next : x)) : s.schedules.concat(next) };
   });
 }
@@ -224,17 +264,19 @@ export function removeHoliday(date) {
 }
 
 export function addLeave(leave) {
-  setState((s) => ({ ...s, leaves: s.leaves.concat({ id: uid(), status: 'aprobada', exception: false, note: '', ...leave }) }));
+  const id = uid();
+  setState((s) => ({ ...s, leaves: s.leaves.concat({ id, status: 'aprobada', exception: false, note: '', createdAt: Date.now(), ...leave, ...stamp() }) }));
+  return id;
 }
 
 export function updateLeave(id, patch) {
-  setState((s) => ({ ...s, leaves: s.leaves.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+  setState((s) => ({ ...s, leaves: s.leaves.map((l) => (l.id === id ? { ...l, ...patch, ...stamp() } : l)) }));
 }
 
 export function saveVacGroup(group) {
   setState((s) => {
     const list = s.vacGroups || [];
-    const g = { id: group.id || uid(), name: '', max: 1, note: '', ...group };
+    const g = { id: group.id || uid(), name: '', max: 1, note: '', ...group, ...stamp() };
     return { ...s, vacGroups: list.some((x) => x.id === g.id) ? list.map((x) => (x.id === g.id ? g : x)) : list.concat(g) };
   });
 }

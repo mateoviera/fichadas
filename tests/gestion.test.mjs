@@ -134,3 +134,40 @@ test('vacaciones pendientes no cuentan como licencia en las fichadas', () => {
   assert.equal(r2.list[0].summary.ausente, 0);
   assert.equal(summarize(r2.list[0].allRows).ausente, 0);
 });
+
+test('aviso antes de guardar: se pisa en el grupo, supera días y repite fechas', async () => {
+  const { checkRequest } = await import('../src/lib/personal.js');
+  const state = {
+    vacGroups: [{ id: 'enf', name: 'Enfermería', max: 1 }],
+    employees: {
+      1: { legajo: '1', name: 'Antigua', hireDate: '2012-01-01', vacGroup: 'enf' },
+      2: { legajo: '2', name: 'Nueva', hireDate: '2025-03-01', vacGroup: 'enf' },
+    },
+    leaves: [{ id: 'x', legajo: '1', from: '2027-01-10', to: '2027-01-20', type: 'Licencia médica', status: 'aprobada' }],
+  };
+  // la nueva pide vacaciones que se pisan con la licencia de la antigua y superan sus 14 días
+  const p = checkRequest(state, { legajo: '2', type: 'Vacaciones', from: '2027-01-15', to: '2027-01-31', status: 'aprobada' });
+  const titles = p.map((x) => x.title);
+  assert.ok(titles.includes('Se pisa con otras personas del grupo'));
+  assert.ok(titles.includes('Supera los días de vacaciones'));
+  assert.match(p.find((x) => x.title.startsWith('Se pisa')).detail, /Antigua tiene más antigüedad/);
+  // la misma persona con dos solicitudes superpuestas
+  const own = checkRequest(state, { legajo: '1', type: 'Día particular', from: '2027-01-12', to: '2027-01-12', status: 'pendiente' });
+  assert.deepEqual(own.map((x) => x.title), ['Ya tiene otra solicitud esos días']);
+  // un permiso por horas no ocupa el lugar del grupo
+  assert.deepEqual(checkRequest(state, { legajo: '2', type: 'Permiso por horas', from: '2027-01-12', status: 'aprobada' }), []);
+  // rechazada: no se valida
+  assert.deepEqual(checkRequest(state, { legajo: '2', type: 'Vacaciones', from: '2027-01-15', to: '2027-01-31', status: 'rechazada' }), []);
+});
+
+test('un permiso por horas no excusa la ausencia del día', () => {
+  const sch = { id: 'lv2', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', est: '' }] };
+  const state = {
+    punches: [{ e: 'A', l: '8', t: at(2026, 11, 2, 8, 0), f: 'f' }, { e: 'A', l: '8', t: at(2026, 11, 2, 16, 0), f: 'f' }],
+    schedules: [sch], holidays: [], vacGroups: [],
+    leaves: [{ id: 'h', legajo: '8', from: '2026-11-03', to: '2026-11-03', type: 'Permiso por horas', startTime: '10:00', endTime: '12:00', status: 'aprobada' }],
+    employees: { 8: { legajo: '8', name: 'Y', sector: '', scheduleId: 'lv2' } },
+    files: [{ id: 'f', estId: 'A', from: '2026-11-01', to: '2026-11-04' }], settings: {},
+  };
+  assert.equal(computeReport(state, { from: '2026-11-02', to: '2026-11-03' }).list[0].summary.ausente, 1);
+});

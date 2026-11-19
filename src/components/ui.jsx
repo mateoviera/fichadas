@@ -51,7 +51,7 @@ export function RowPills({ r }) {
   return <span className="row" style={{ gap: 4 }}>{pills}</span>;
 }
 
-export function Drawer({ title, onClose, children, actions }) {
+export function Drawer({ title, onClose, children, actions, footer, wide }) {
   useEffect(() => {
     const k = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -60,13 +60,14 @@ export function Drawer({ title, onClose, children, actions }) {
   return (
     <>
       <div className="scrim" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-label={typeof title === 'string' ? title : 'Detalle'}>
+      <aside className={`drawer ${wide ? 'wide' : ''}`} role="dialog" aria-label={typeof title === 'string' ? title : 'Detalle'}>
         <div className="drawer-head">
           <h3 style={{ flex: 1, minWidth: 0 }}>{title}</h3>
           {actions}
           <button className="btn sm ghost" onClick={onClose} aria-label="Cerrar">Cerrar</button>
         </div>
         <div className="drawer-body">{children}</div>
+        {footer && <div className="drawer-foot">{footer}</div>}
       </aside>
     </>
   );
@@ -109,5 +110,71 @@ export function TimeInput({ value, onChange, id, ...rest }) {
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       {...rest}
     />
+  );
+}
+
+/** Ventana de diálogo centrada (se cierra con Esc o tocando afuera). */
+export function Modal({ title, onClose, children, footer, width = 520, tone }) {
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && (e.stopPropagation(), onClose());
+    window.addEventListener('keydown', k, true);
+    return () => window.removeEventListener('keydown', k, true);
+  }, [onClose]);
+  return (
+    <div className="modal-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`modal ${tone || ''}`} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Diálogo'} style={{ width: `min(${width}px, 100%)` }}>
+        <div className="modal-head">
+          <h3>{title}</h3>
+          <button className="btn sm ghost" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Aviso de que algo no está permitido, con la lista de motivos y la opción de hacerlo igual.
+ * problems: [{ title, detail }]
+ */
+export function WarnDialog({ title = 'Esto no está permitido', intro, problems, confirmLabel = 'Hacerlo igual', onConfirm, onClose }) {
+  return (
+    <Modal
+      title={title}
+      tone="warn"
+      onClose={onClose}
+      footer={
+        <>
+          <span className="spacer" />
+          <button className="btn" onClick={onClose} autoFocus>Volver</button>
+          <button className="btn warn-btn" onClick={onConfirm}>{confirmLabel}</button>
+        </>
+      }
+    >
+      {intro && <p>{intro}</p>}
+      <ul className="problems">
+        {problems.map((p, i) => (
+          <li key={i}><b>{p.title}</b><span>{p.detail}</span></li>
+        ))}
+      </ul>
+      <p className="muted small">Si lo hacés igual, queda marcado como <b>excepción</b> para que se vea que fue una decisión tomada a propósito.</p>
+    </Modal>
+  );
+}
+
+/** "Modificado 19/11/2026 14:32 · usuario" */
+export function Stamp({ text, label = 'Modificado' }) {
+  if (!text) return <span className="stamp muted">Sin cambios registrados</span>;
+  return <span className="stamp muted" title={`${label}: ${text}`}>{label} {text}</span>;
+}
+
+/** Explicación plegable ("¿Qué significa?"). */
+export function Help({ summary = '¿Qué significa cada dato?', children }) {
+  return (
+    <details className="help">
+      <summary>{summary}</summary>
+      <div className="help-body">{children}</div>
+    </details>
   );
 }
