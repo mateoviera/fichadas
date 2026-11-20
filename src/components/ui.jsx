@@ -44,7 +44,7 @@ export function RowPills({ r }) {
   ));
   for (const i of r.info) {
     if (i === 'sin_horario' && r.issues.length) continue;
-    const text = i === 'feriado' ? `Feriado${r.holidayName ? ` · ${r.holidayName}` : ''}` : i === 'licencia' ? r.leaveType || 'Licencia' : i === 'extra' ? `Extra +${r.extraMin}′` : INFO_LABELS[i];
+    const text = i === 'feriado' ? `Feriado${r.holidayName ? ` · ${r.holidayName}` : ''}` : i === 'licencia' ? r.leaveType || 'Licencia' : i === 'extra' ? `Extra +${r.extraMin}′` : i === 'temprana' ? `Temprano +${r.earlyArrMin}′` : INFO_LABELS[i];
     pills.push(<span key={i} className={`pill ${i === 'sin_horario' ? 'neutral' : 'info'}`} title={text}>{text.length > 34 ? text.slice(0, 32) + '…' : text}</span>);
   }
   if (!r.issues.length && (r.entry || r.exit) && !r.info.includes('sin_horario')) pills.unshift(<span key="ok" className="pill ok">Cumplido</span>);

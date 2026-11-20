@@ -111,3 +111,27 @@ test('turno incompleto + fichada suelta del mismo día: primera = ingreso, últi
   assert.equal(r.workedMin, 144);
   assert.equal(r.missingMin, 0);
 });
+
+test('llegada temprana y horas extra van aparte de las horas trabajadas', () => {
+  const sch = { id: 'ocho2', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00' }] };
+  const at = (d, h, m = 0) => Date.UTC(2026, 9, d, h, m) / 1000; // lunes 5 y martes 6/10/2026
+  const punches = [
+    { e: 'A', t: at(5, 7, 40) }, { e: 'A', t: at(5, 16, 15) }, // 20′ antes, 15′ después
+    { e: 'A', t: at(6, 7, 0) }, { e: 'A', t: at(6, 17, 0) }, // 1 h antes, 1 h después
+  ];
+  const rows = analyzeEmployee({ punches, schedule: sch, from: '2026-10-05', to: '2026-10-06' });
+  const [a, b] = rows;
+  assert.equal(a.workedMin, 480);
+  assert.equal(a.earlyArrMin, 20);
+  assert.equal(a.extraMin, 15);
+  assert.ok(!a.info.includes('extra') && !a.info.includes('temprana'));
+  assert.equal(b.workedMin, 480);
+  assert.equal(b.earlyArrMin, 60);
+  assert.equal(b.extraMin, 60);
+  assert.ok(b.info.includes('extra') && b.info.includes('temprana'));
+  const s = summarize(rows);
+  assert.equal(s.worked, 960);
+  assert.equal(s.temprano, 80);
+  assert.equal(s.extra, 75);
+  assert.equal(s.saldo, 0);
+});

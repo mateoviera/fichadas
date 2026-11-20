@@ -28,7 +28,7 @@ export default function Planilla({ items, state, from, to, estId }) {
           <table className="sheet-table">
             <thead>
               <tr>
-                <th>Fecha</th><th>Turno</th><th>Ingreso</th><th>Egreso</th><th className="right">Horas</th><th className="right">Sin fichada</th><th>Establecimiento</th><th>Estado</th><th>Observaciones</th>
+                <th>Fecha</th><th>Turno</th><th>Ingreso</th><th>Egreso</th><th className="right">Horas</th><th className="right">Temprano</th><th className="right">Extra</th><th className="right">Sin fichada</th><th>Establecimiento</th><th>Estado</th><th>Observaciones</th>
               </tr>
             </thead>
             <tbody>
@@ -41,6 +41,8 @@ export default function Planilla({ items, state, from, to, estId }) {
                     {r.exit ? fmtTime(r.exit.t) + (r.nextDayExit ? ' (+1)' : '') + (r.exit.m ? ' (M)' : '') : '--:--'}
                   </td>
                   <td className="num right">{r.workedMin ? fmtDuration(r.workedMin) : ''}</td>
+                  <td className="num right">{r.earlyArrMin ? fmtDuration(r.earlyArrMin) : ''}</td>
+                  <td className="num right">{r.extraMin ? fmtDuration(r.extraMin) : ''}</td>
                   <td className="num right bad-text">{r.missingMin ? fmtDuration(r.missingMin) : ''}</td>
                   <td>{placeOf(r, state)}</td>
                   <td className={r.issues.length ? 'bad-text' : ''}>{statusText(r) || (r.info.includes('feriado') ? 'Feriado' : r.info.includes('licencia') ? r.leaveType : '')}</td>
@@ -55,13 +57,14 @@ export default function Planilla({ items, state, from, to, estId }) {
             <Total label="Horas sin fichada" value={fmtDuration(s.sinFichada)} bad={s.sinFichada > 0} />
             {s.expected > 0 && <Total label="Horas esperadas" value={fmtDuration(s.expected)} />}
             {s.expected > 0 && <Total label="Saldo" value={fmtSigned(s.saldo)} bad={s.saldo < 0} />}
+            <Total label="Llegadas tempranas" value={fmtDuration(s.temprano)} />
             <Total label="Horas extra" value={fmtDuration(s.extra)} />
             <Total label="Llegadas tarde" value={`${s.tarde}${s.tardeMin ? ` (${s.tardeMin} min)` : ''}`} bad={s.tarde > 0} />
             <Total label="Salidas anticipadas" value={`${s.anticipada}${s.anticipadaMin ? ` (${s.anticipadaMin} min)` : ''}`} bad={s.anticipada > 0} />
             <Total label="Incompletos" value={s.incompleto} bad={s.incompleto > 0} />
             {s.quota ? <Total label="Días esperados / turnos completos" value={`${s.quota.days} / ${s.daysWorked}`} bad={s.daysWorked < s.quota.days} /> : <Total label="Ausencias" value={s.ausente} bad={s.ausente > 0} />}
           </div>
-          <p className="sheet-note">(M) fichada cargada a mano · (+1) egreso al día siguiente · Las horas sin fichada no se suman a las trabajadas.</p>
+          <p className="sheet-note">(M) fichada cargada a mano · (+1) egreso al día siguiente · Las horas trabajadas son las del horario; las llegadas tempranas y horas extra se muestran aparte. Las horas sin fichada no se suman a las trabajadas.</p>
 
           <div className="sheet-signs">
             <div><span />Firma del empleado</div>

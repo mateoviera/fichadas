@@ -223,7 +223,7 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
             <div>
               <span>Horas trabajadas</span>
               <b>{fmtDuration(s.worked)} h</b>
-              <small>con entrada y salida fichadas</small>
+              <small>dentro de su horario, con entrada y salida fichadas</small>
             </div>
             {s.expected > 0 && (
               <div>
@@ -239,6 +239,20 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
                 <small>{s.saldo < 0 ? 'le faltan horas' : s.saldo > 0 ? 'trabajó de más' : 'justo'}</small>
               </div>
             )}
+            {s.temprano > 0 && (
+              <div>
+                <span>Llegadas tempranas</span>
+                <b>{fmtDuration(s.temprano)} h</b>
+                <small>antes del horario de ingreso</small>
+              </div>
+            )}
+            {s.extra > 0 && (
+              <div>
+                <span>Horas extra</span>
+                <b>{fmtDuration(s.extra)} h</b>
+                <small>después del horario de egreso</small>
+              </div>
+            )}
             {s.quota && (
               <div>
                 <span>Turnos completos</span>
@@ -247,13 +261,12 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
               </div>
             )}
           </div>
-          {(s.sinFichada > 0 || s.extra > 0 || s.tardeMin > 0) && (
+          {(s.sinFichada > 0 || s.tardeMin > 0 || s.anticipadaMin > 0) && (
             <p className="emp-note">
               {[
                 s.sinFichada > 0 && `${fmtDuration(s.sinFichada)} h no se cuentan porque falta la entrada o la salida`,
                 s.tardeMin > 0 && `${s.tardeMin} min de tardanza en total`,
                 s.anticipadaMin > 0 && `${s.anticipadaMin} min de salidas antes de hora`,
-                s.extra > 0 && `${fmtDuration(s.extra)} h después del horario`,
               ].filter(Boolean).join(' · ')}
             </p>
           )}

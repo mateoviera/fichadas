@@ -52,7 +52,7 @@ export default function Ajustes() {
           <div className="filters">
             {num('tolIn', 'Tolerancia de ingreso (min)', 'Minutos después del horario sin marcar tarde.')}
             {num('tolOut', 'Tolerancia de egreso (min)', 'Minutos antes del horario sin marcar salida anticipada.')}
-            {num('extraMin', 'Horas extra desde (min)', 'Minutos después del egreso para marcar extra.')}
+            {num('extraMin', 'Marcar temprano / extra desde (min)', 'Minutos antes del ingreso o después del egreso para mostrar la etiqueta. Igual se suman todos aparte de las horas trabajadas.')}
           </div>
           <h3>Lectura de fichadas</h3>
           <div className="filters">
