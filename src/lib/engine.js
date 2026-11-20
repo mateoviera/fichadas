@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS = {
   windowMin: 180, // ventana de búsqueda alrededor del horario esperado
   dedupeMin: 10, // fichadas repetidas dentro de estos minutos se consideran una sola
   maxFreeHours: 16, // máximo de horas entre ingreso y egreso cuando no hay horario
-  extraMin: 30, // a partir de cuántos minutos después del egreso se marca "extra"
+  extraMin: 30, // a partir de cuántos minutos antes del ingreso / después del egreso se marca con etiqueta
 };
 
 export const ISSUE_LABELS = {
@@ -20,6 +20,7 @@ export const ISSUE_LABELS = {
 export const INFO_LABELS = {
   feriado: 'Feriado',
   licencia: 'Licencia',
+  temprana: 'Llegada temprana',
   extra: 'Horas extra',
   sin_horario: 'Sin horario asignado',
   manual: 'Fichada manual',
@@ -286,6 +287,7 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
   let lateMin = 0;
   let earlyMin = 0;
   let extraMin = 0;
+  let earlyArrMin = 0;
 
   const holiday = holidays.get ? holidays.get(date) : null;
   const leave = leaveFor(leaves, date);
@@ -307,6 +309,9 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
       if (d > S.tolIn) {
         issues.push('tarde');
         lateMin = d;
+      } else if (d < 0 && exit) {
+        earlyArrMin = -d;
+        if (earlyArrMin >= S.extraMin) info.push('temprana');
       }
     }
     if (exit) {
@@ -314,9 +319,9 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
       if (d > S.tolOut) {
         issues.push('anticipada');
         earlyMin = d;
-      } else if (-d >= S.extraMin) {
-        info.push('extra');
+      } else if (d < 0 && entry) {
         extraMin = -d;
+        if (extraMin >= S.extraMin) info.push('extra');
       }
     }
     if (holiday) info.push('feriado');
@@ -325,7 +330,14 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
   if ((entry && entry.m) || (exit && exit.m)) info.push('manual');
 
   // Solo cuentan como trabajadas las horas con ingreso Y egreso fichados.
-  const workedMin = entry && exit ? Math.round((exit.t - entry.t) / MIN) : 0;
+  // Con turno programado, se cuentan solo las horas dentro del horario: lo anterior al ingreso
+  // va a "llegada temprana" (earlyArrMin) y lo posterior al egreso a "horas extra" (extraMin).
+  let workedMin = 0;
+  if (entry && exit) {
+    workedMin = inst && !outside
+      ? Math.max(0, Math.round((Math.min(exit.t, inst.end) - Math.max(entry.t, inst.start)) / MIN))
+      : Math.round((exit.t - entry.t) / MIN);
+  }
   // Si falta una de las dos fichadas de un turno programado, las horas del turno
   // van a "sin fichada" (no se suman a las trabajadas).
   const missingMin = inst && !absent && (!entry || !exit) ? Math.round(inst.dur / MIN) : 0;
@@ -342,6 +354,7 @@ function makeRow({ inst, entry, exit, mids, S, holidays, leaves, noSchedule, out
     lateMin,
     earlyMin,
     extraMin,
+    earlyArrMin,
     workedMin,
     missingMin,
     expectedMin: inst && !(absent && (holiday || leave)) ? Math.round(inst.dur / MIN) : 0,
@@ -362,7 +375,7 @@ function sortTs(r) {
 }
 
 export function summarize(rows) {
-  const s = { turnos: 0, ok: 0, tarde: 0, tardeMin: 0, anticipada: 0, anticipadaMin: 0, incompleto: 0, ausente: 0, fuera: 0, worked: 0, sinFichada: 0, expected: 0, extra: 0, evaluables: 0 };
+  const s = { turnos: 0, ok: 0, tarde: 0, tardeMin: 0, anticipada: 0, anticipadaMin: 0, incompleto: 0, ausente: 0, fuera: 0, worked: 0, sinFichada: 0, expected: 0, extra: 0, temprano: 0, evaluables: 0 };
   for (const r of rows) {
     const isAbsentExcused = !r.entry && !r.exit;
     if (!isAbsentExcused) s.turnos++;
@@ -370,6 +383,7 @@ export function summarize(rows) {
     s.sinFichada += r.missingMin || 0;
     s.expected += r.expectedMin;
     s.extra += r.extraMin;
+    s.temprano += r.earlyArrMin || 0;
     if (r.issues.includes('tarde')) { s.tarde++; s.tardeMin += r.lateMin; }
     if (r.issues.includes('anticipada')) { s.anticipada++; s.anticipadaMin += r.earlyMin; }
     if (r.issues.includes('sin_ingreso') || r.issues.includes('sin_egreso')) s.incompleto++;
@@ -381,7 +395,8 @@ export function summarize(rows) {
       if (!r.issues.length) s.ok++;
     }
   }
-  // Saldo: horas trabajadas (con ambas fichadas) menos horas esperadas por horario.
+  // Saldo: horas trabajadas dentro del horario (con ambas fichadas) menos horas esperadas.
+  // Las llegadas tempranas y horas extra se informan aparte y no entran en el saldo.
   s.saldo = s.worked - s.expected;
   s.cumplimiento = s.evaluables ? Math.round((s.ok / s.evaluables) * 100) : null;
   return s;

@@ -104,7 +104,7 @@ const GENERIC_NOTES = new Set(['Manual', 'Fichada manual', 'Salida completada de
 /** Observaciones de un día: feriado, licencia, extra, fichadas manuales e intermedias. */
 export function rowObs(r) {
   return [
-    ...r.info.filter((i) => i !== 'sin_horario').map((i) => (i === 'feriado' ? `Feriado: ${r.holidayName}` : i === 'licencia' ? `Licencia: ${r.leaveType}` : i === 'extra' ? `Extra +${r.extraMin} min` : INFO_LABELS[i])),
+    ...r.info.filter((i) => i !== 'sin_horario').map((i) => (i === 'feriado' ? `Feriado: ${r.holidayName}` : i === 'licencia' ? `Licencia: ${r.leaveType}` : i === 'extra' ? `Extra +${r.extraMin} min` : i === 'temprana' ? `Llegada temprana +${r.earlyArrMin} min` : INFO_LABELS[i])),
     r.entry?.m && !GENERIC_NOTES.has(r.entry.m) ? `Ingreso manual: ${r.entry.m}` : '',
     r.exit?.m && !GENERIC_NOTES.has(r.exit.m) ? `Egreso manual: ${r.exit.m}` : '',
     r.mids.length ? `Fichadas intermedias: ${r.mids.map((m) => fmtTime(m.t)).join(', ')}` : '',
@@ -121,17 +121,17 @@ export function buildExportSheets(report, state) {
   const estName = (id) => state.establishments[id]?.name || '';
   const detail = [[
     'Legajo', 'Nombre', 'Sector', 'Horario', 'Establecimiento', 'Fecha', 'Día', 'Turno esperado', 'Ingreso', 'Egreso',
-    'Fecha egreso', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Tarde (min)', 'Salida anticipada (min)', 'Extra (min)', 'Estado', 'Observaciones',
+    'Fecha egreso', 'Horas trabajadas (en horario)', 'Horas sin fichada', 'Horas esperadas', 'Tarde (min)', 'Salida anticipada (min)', 'Llegada temprana (min)', 'Extra (min)', 'Estado', 'Observaciones',
   ]];
   const summary = [[
     'Legajo', 'Nombre', 'Sector', 'Horario', 'Turnos', 'Cumplimiento %', 'Llegadas tarde', 'Minutos tarde',
-    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas', 'Horas sin fichada', 'Horas esperadas', 'Saldo (h)', 'Horas extra', 'Días esperados (rotativo)', 'Turnos completos (rotativo)',
+    'Salidas anticipadas', 'Minutos anticipados', 'Incompletos', 'Ausencias', 'Fuera de horario', 'Horas trabajadas (en horario)', 'Horas sin fichada', 'Horas esperadas', 'Saldo (h)', 'Llegadas tempranas (h)', 'Horas extra', 'Días esperados (rotativo)', 'Turnos completos (rotativo)',
   ]];
   const h = (m) => Math.round((m / 60) * 100) / 100;
   for (const { emp, sch, rows, summary: s } of report.list) {
     summary.push([
       Number(emp.legajo), emp.name, emp.sector, sch?.name || 'Sin horario', s.turnos, s.cumplimiento ?? '', s.tarde, s.tardeMin,
-      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.sinFichada), h(s.expected), s.expected ? h(s.saldo) : '', h(s.extra), s.quota ? s.quota.days : '', s.quota ? s.daysWorked : '',
+      s.anticipada, s.anticipadaMin, s.incompleto, s.ausente, s.fuera, h(s.worked), h(s.sinFichada), h(s.expected), s.expected ? h(s.saldo) : '', h(s.temprano), h(s.extra), s.quota ? s.quota.days : '', s.quota ? s.daysWorked : '',
     ]);
     for (const r of rows) {
       const obs = rowObs(r);
@@ -139,7 +139,7 @@ export function buildExportSheets(report, state) {
         Number(emp.legajo), emp.name, emp.sector, sch?.name || 'Sin horario', estName(r.est), fmtDate(r.date), WEEKDAYS_SHORT[weekday(r.date)],
         r.inst ? r.inst.label : '', r.entry ? fmtTime(r.entry.t) : '', r.exit ? fmtTime(r.exit.t) : '',
         r.exit ? fmtDate(dateKey(r.exit.t)) : '', r.workedMin ? h(r.workedMin) : '', r.missingMin ? h(r.missingMin) : '', r.expectedMin ? h(r.expectedMin) : '',
-        r.lateMin || '', r.earlyMin || '', r.extraMin || '', statusText(r), obs,
+        r.lateMin || '', r.earlyMin || '', r.earlyArrMin || '', r.extraMin || '', statusText(r), obs,
       ]);
     }
   }
