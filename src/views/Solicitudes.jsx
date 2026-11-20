@@ -119,47 +119,52 @@ function Calendario({ onOpen }) {
           : <>Tocá un día libre en la fila de una persona para empezar una solicitud, y otro día para terminarla. Tocá una solicitud para verla o cambiarla.{!showAll && ' Ahora se muestran solo quienes tienen algo cargado este mes.'}</>}
       </div>
 
-      <div className="panel">
-        <div className="panel-head small">
-          <span className="legend"><i className="lg vac" /> Vacaciones</span>
-          <span className="legend"><i className="lg day" /> Día particular / franco</span>
-          <span className="legend"><i className="lg med" /> Licencia médica</span>
-          <span className="legend"><i className="lg other" /> Otras</span>
-          <span className="legend"><i className="lg pend" /> Pendiente</span>
-          <span className="legend"><i className="lg clash" /> Se pisa</span>
-          <span className="legend"><i className="dot" /> Permiso por horas</span>
-        </div>
-        {!sections.length && <div className="empty">No hay solicitudes en {MONTHS[m - 1].toLowerCase()}. Elegí un grupo o marcá «Mostrar a todo el personal» para cargar una desde el calendario.</div>}
-        {sections.map(({ g, rows, count }) => (
-          <div key={g.id || 'none'} className="table-wrap cal-section">
-            <table className="cal">
-              <thead>
-                <tr>
-                  <th className="cal-name">
-                    {g.name}
-                    <span className="muted small">{g.max > 0 ? ` · máx. ${g.max} a la vez` : g.id ? ' · sin control' : ''}</span>
-                  </th>
-                  {days.map((d) => <th key={d} className={`${isWe(d) ? 'we' : ''} ${d === today ? 'today' : ''}`}><span>{WEEKDAYS_LETTER[weekday(d)]}</span>{Number(d.slice(8))}</th>)}
+      <div className="panel panel-pad cal-legend small">
+        <span className="legend"><i className="lg vac" /> Vacaciones</span>
+        <span className="legend"><i className="lg day" /> Día particular / franco</span>
+        <span className="legend"><i className="lg med" /> Licencia médica</span>
+        <span className="legend"><i className="lg other" /> Otras</span>
+        <span className="legend"><i className="lg pend" /> Pendiente</span>
+        <span className="legend"><i className="lg clash" /> Se pisa</span>
+        <span className="legend"><i className="dot" /> Permiso por horas</span>
+        <span className="legend"><b className="lg-num">2</b> Personas del grupo ausentes ese día (en rojo si supera el máximo)</span>
+      </div>
+      {!sections.length && <div className="panel empty">No hay solicitudes en {MONTHS[m - 1].toLowerCase()}. Elegí un grupo o marcá «Mostrar a todo el personal» para cargar una desde el calendario.</div>}
+      {sections.map(({ g, rows, count }) => (
+        <section key={g.id || 'none'} className="panel cal-section">
+          <header className="cal-head">
+            <h3>{g.name}</h3>
+            <span className="muted small">
+              {rows.length} {rows.length === 1 ? 'persona' : 'personas'}
+              {g.max > 0 ? ` · pueden faltar hasta ${g.max} a la vez` : g.id ? ' · sin límite de ausencias' : ''}
+            </span>
+          </header>
+          <table className="cal">
+            <colgroup><col className="cal-namecol" />{days.map((d) => <col key={d} />)}</colgroup>
+            <thead>
+              <tr>
+                <th className="cal-name">Persona</th>
+                {days.map((d) => <th key={d} className={`${isWe(d) ? 'we' : ''} ${d === today ? 'today' : ''}`}><span>{WEEKDAYS_LETTER[weekday(d)]}</span>{Number(d.slice(8))}</th>)}
+              </tr>
+              {g.max > 0 && (
+                <tr className="avail">
+                  <th className="cal-name" title="Cuántas personas del grupo están ausentes cada día. Se marca en amarillo al llegar al máximo y en rojo si lo supera.">Ausentes (máx. {g.max})</th>
+                  {days.map((d) => {
+                    const c = count(d);
+                    return <th key={d} className={c > g.max ? 'over' : c === g.max ? 'full' : ''} title={`${c} ausente${c === 1 ? '' : 's'} de ${g.max} permitido${g.max === 1 ? '' : 's'}`}>{c || ''}</th>;
+                  })}
                 </tr>
-                {g.max > 0 && (
-                  <tr className="avail">
-                    <th className="cal-name muted small">Faltan / máximo</th>
-                    {days.map((d) => {
-                      const c = count(d);
-                      return <th key={d} className={c > g.max ? 'over' : c === g.max ? 'full' : ''} title={`${c} de ${g.max} permitidos`}>{c || ''}</th>;
-                    })}
-                  </tr>
-                )}
-              </thead>
-              <tbody>
-                {rows.map((e) => {
-                  const mine = reqs.filter((l) => l.legajo === e.legajo);
-                  return (
-                    <tr key={e.legajo}>
-                      <td className="cal-name">
-                        <span className="nm">{e.name || `#${e.legajo}`}</span>
-                        <span className="muted small"> {fmtSeniority(seniority(e.hireDate))}</span>
-                      </td>
+              )}
+            </thead>
+            <tbody>
+              {rows.map((e) => {
+                const mine = reqs.filter((l) => l.legajo === e.legajo);
+                return (
+                  <tr key={e.legajo}>
+                    <td className="cal-name">
+                      <span className="nm" title={e.name}>{e.name || `#${e.legajo}`}</span>
+                      <span className="muted sub">{fmtSeniority(seniority(e.hireDate)) || `Leg. ${e.legajo}`}</span>
+                    </td>
                       {days.map((d) => {
                         const full = mine.find((l) => isFullDay(l) && d >= l.from && d <= (l.to || l.from));
                         const hrs = mine.filter((l) => !isFullDay(l) && l.from === d);
@@ -189,9 +194,8 @@ function Calendario({ onOpen }) {
                 })}
               </tbody>
             </table>
-          </div>
-        ))}
-      </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -259,10 +263,11 @@ function Lista({ onOpen }) {
         <input id="l-q" className="input" placeholder="Buscar persona" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      <div className="panel table-wrap">
-        <table>
+      <div className="panel">
+        <table className="req-table">
+          <colgroup><col className="c-person" /><col className="c-period" /><col className="c-status" /><col /><col className="c-actions" /></colgroup>
           <thead>
-            <tr><th>Persona</th><th>Tipo</th><th>Período</th><th className="right">Duración</th><th>Estado</th><th>Observaciones</th><th>Última modificación</th><th /></tr>
+            <tr><th>Persona</th><th>Tipo y período</th><th>Estado</th><th>Observaciones</th><th /></tr>
           </thead>
           <tbody>
             {list.map((l) => {
@@ -272,22 +277,28 @@ function Lista({ onOpen }) {
               const hrs = l.type === HOURS;
               return (
                 <tr key={l.id} className={st === 'rechazada' ? 'dim' : ''}>
-                  <td style={{ minWidth: 170 }}>
-                    <b>{e?.name || 'Sin nombre'}</b> <span className="mono muted">#{l.legajo}</span>
+                  <td>
+                    <b>{e?.name || 'Sin nombre'}</b> <span className="mono muted small">#{l.legajo}</span>
                     <div className="small muted">{groupName[e?.vacGroup] || 'Sin grupo'}</div>
                   </td>
-                  <td><span className={`tag ${typeInfo(l.type).tone}`}>{l.type}</span></td>
-                  <td className="nowrap">{fmtDate(l.from)}{hrs ? ` ${l.startTime}–${l.endTime}` : (l.to || l.from) !== l.from ? ` → ${fmtDate(l.to)}` : ''}</td>
-                  <td className="num right nowrap">{hrs ? `${fmtDuration(requestMinutes(l))} h` : `${leaveLength(l)} d`}</td>
-                  <td><span className="row" style={{ gap: 4 }}><span className={`pill ${STATUS_TONE[st]}`}>{STATUS_LABEL[st]}</span>{l.exception && <span className="pill info" title="Se cargó a pesar de no cumplir alguna regla">Excepción</span>}</span></td>
-                  <td className="small" style={{ minWidth: 180 }}>
+                  <td>
+                    <span className={`tag ${typeInfo(l.type).tone}`}>{l.type}</span>
+                    <div className="small">
+                      {fmtDate(l.from)}{hrs ? ` ${l.startTime}–${l.endTime}` : (l.to || l.from) !== l.from ? ` → ${fmtDate(l.to)}` : ''}
+                      <span className="muted"> · {hrs ? `${fmtDuration(requestMinutes(l))} h` : `${leaveLength(l)} ${leaveLength(l) === 1 ? 'día' : 'días'}`}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="row" style={{ gap: 4, flexWrap: 'wrap' }}><span className={`pill ${STATUS_TONE[st]}`}>{STATUS_LABEL[st]}</span>{l.exception && <span className="pill info" title="Se cargó a pesar de no cumplir alguna regla">Excepción</span>}</span>
+                    <div className="small muted" title="Última modificación">{fmtStamp(l) || ''}</div>
+                  </td>
+                  <td className="small">
                     {c?.blockedBy.size > 0 && <div className="bad-text">Se pisa con {names(c.blockedBy)} (más antigüedad)</div>}
                     {c?.displaces.size > 0 && <div className="muted">Tiene prioridad sobre {names(c.displaces)}</div>}
                     {l.note && <div className="muted">{l.note}</div>}
                   </td>
-                  <td className="small muted" style={{ minWidth: 150 }}>{fmtStamp(l) || '—'}</td>
                   <td>
-                    <span className="row" style={{ gap: 4, justifyContent: 'flex-end', minWidth: 120 }}>
+                    <span className="req-actions">
                       {st === 'pendiente' && <button className="btn sm" onClick={() => approve(l)}>Aprobar</button>}
                       {st === 'pendiente' && <button className="btn sm ghost" onClick={() => updateLeave(l.id, { status: 'rechazada' })}>Rechazar</button>}
                       <button className="btn sm ghost" onClick={() => onOpen(l)}>Abrir</button>
@@ -296,7 +307,7 @@ function Lista({ onOpen }) {
                 </tr>
               );
             })}
-            {!list.length && <tr><td colSpan={8} className="empty">No hay solicitudes con esos filtros en {year}.</td></tr>}
+            {!list.length && <tr><td colSpan={5} className="empty">No hay solicitudes con esos filtros en {year}.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -17,11 +17,27 @@ export function setActor(name) {
 }
 const stamp = () => ({ updatedAt: Date.now(), updatedBy: actor });
 
+/** "MUÑOZ CRISTIAN" o "muñoz cristian" → "Muñoz Cristian": mayúscula solo en la primera letra de cada palabra. */
+export function properName(s) {
+  return String(s || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('es')
+    .replace(/(^|[\s\-'’])(\p{L})/gu, (_, sep, ch) => sep + ch.toLocaleUpperCase('es'));
+}
+
 /** "Apellido Nombre" a partir de los campos separados. */
 export function fullName(e) {
   if (!e) return '';
   if (e.lastName || e.firstName) return `${e.lastName || ''} ${e.firstName || ''}`.trim();
   return e.name || '';
+}
+
+const NAME_FIELDS = ['name', 'lastName', 'firstName'];
+function withProperNames(patch) {
+  const out = { ...patch };
+  NAME_FIELDS.forEach((k) => { if (typeof out[k] === 'string') out[k] = properName(out[k]); });
+  return out;
 }
 
 export const DEFAULT_SCHEDULES = [
@@ -140,8 +156,8 @@ export function importParsed(parsed, { estId, newEstName }) {
     const employees = { ...s.employees };
     for (const r of parsed.records) {
       const cur = employees[r.legajo];
-      if (!cur) employees[r.legajo] = { legajo: r.legajo, name: r.name || '', sector: '', scheduleId: '' };
-      else if (!cur.name && r.name) employees[r.legajo] = { ...cur, name: r.name };
+      if (!cur) employees[r.legajo] = { legajo: r.legajo, name: properName(r.name), sector: '', scheduleId: '' };
+      else if (!cur.name && r.name) employees[r.legajo] = { ...cur, name: properName(r.name) };
     }
     return {
       ...s,
@@ -179,7 +195,7 @@ export function renameEstablishment(id, name) {
 
 export function upsertEmployee(legajo, patch) {
   setState((s) => {
-    const next = { legajo, name: '', sector: '', scheduleId: '', ...s.employees[legajo], ...patch, ...stamp() };
+    const next = { legajo, name: '', sector: '', scheduleId: '', ...s.employees[legajo], ...withProperNames(patch), ...stamp() };
     if ('lastName' in patch || 'firstName' in patch) next.name = fullName(next);
     return { ...s, employees: { ...s.employees, [legajo]: next } };
   });
@@ -299,6 +315,23 @@ export function addManualPunch({ legajo, estId, ts, note }) {
 
 export function removeManualPunch(id) {
   setState((s) => ({ ...s, punches: s.punches.filter((p) => p.id !== id) }));
+}
+
+/** Pasa a "Apellido Nombre" los nombres escritos todo en mayúsculas o minúsculas. Devuelve cuántos cambió. */
+export function normalizeNames() {
+  let n = 0;
+  setState((s) => {
+    const employees = { ...s.employees };
+    for (const [k, e] of Object.entries(employees)) {
+      const fixed = withProperNames(Object.fromEntries(NAME_FIELDS.filter((f) => e[f]).map((f) => [f, e[f]])));
+      if (NAME_FIELDS.some((f) => fixed[f] !== undefined && fixed[f] !== e[f])) {
+        employees[k] = { ...e, ...fixed };
+        n++;
+      }
+    }
+    return n ? { ...s, employees } : s;
+  });
+  return n;
 }
 
 export function restoreBackup(obj) {

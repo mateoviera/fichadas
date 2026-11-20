@@ -137,7 +137,7 @@ export default function Personal() {
           <thead>
             <tr>
               <th style={{ width: 32 }}><input type="checkbox" aria-label="Seleccionar todos" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(list.map((e) => e.legajo)))} /></th>
-              <th>Persona</th><th>Puesto</th><th>Horario</th><th>Antigüedad</th><th>Grupo</th><th className="right">Última modificación</th>
+              <th>Persona</th><th>Puesto</th><th>Antigüedad</th><th className="right">Última modificación</th>
             </tr>
           </thead>
           <tbody>
@@ -156,9 +156,8 @@ export default function Personal() {
                     <div className="small muted">Leg. {e.legajo}{e.dni ? ` · DNI ${e.dni}` : ''}{gone ? ` · baja ${fmtDate(e.exitDate)}` : ''}{noPunches && !gone ? ' · sin fichadas' : ''}</div>
                   </td>
                   <td className="small">{e.position || <span className="muted">—</span>}{e.sector && <div className="muted">{e.sector}</div>}</td>
-                  <td className="small" style={{ maxWidth: 300 }}>{sch ? <span title={sch.name}>{scheduleSummary(sch)}</span> : <span className="pill neutral">Sin horario</span>}</td>
+                  {/* <td className="small" style={{ maxWidth: 300 }}>{sch ? <span title={sch.name}>{scheduleSummary(sch)}</span> : <span className="pill neutral">Sin horario</span>}</td> Ver horario desde el personal */}
                   <td className="small nowrap">{e.hireDate ? fmtSeniority(seniority(e.hireDate)) : <span className="muted">—</span>}</td>
-                  <td className="small">{groupName[e.vacGroup] || <span className="muted">—</span>}</td>
                   <td className="small muted right" style={{ minWidth: 140 }}>{fmtStamp(e) || '—'}</td>
                 </tr>
               );
