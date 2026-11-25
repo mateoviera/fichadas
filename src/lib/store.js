@@ -146,7 +146,10 @@ export function importParsed(parsed, { estId, newEstName }) {
     const fileId = uid();
     const seen = new Set(s.punches.map((p) => `${p.e}|${p.l}|${p.t}`));
     const added = [];
-    for (const r of parsed.records) {
+    // Legajos mal cargados en algún reloj (ej. 281 → 284): se guardan con el legajo real.
+    const alias = s.settings.legajoAlias || {};
+    const records = parsed.records.map((r) => (alias[r.legajo] ? { ...r, legajo: alias[r.legajo], name: '' } : r));
+    for (const r of records) {
       const k = `${id}|${r.legajo}|${r.ts}`;
       if (seen.has(k)) continue;
       seen.add(k);
@@ -154,7 +157,7 @@ export function importParsed(parsed, { estId, newEstName }) {
     }
     addedCount = added.length;
     const employees = { ...s.employees };
-    for (const r of parsed.records) {
+    for (const r of records) {
       const cur = employees[r.legajo];
       if (!cur) employees[r.legajo] = { legajo: r.legajo, name: properName(r.name), sector: '', scheduleId: '' };
       else if (!cur.name && r.name) employees[r.legajo] = { ...cur, name: properName(r.name) };
@@ -315,6 +318,31 @@ export function addManualPunch({ legajo, estId, ts, note }) {
 
 export function removeManualPunch(id) {
   setState((s) => ({ ...s, punches: s.punches.filter((p) => p.id !== id) }));
+}
+
+/**
+ * Une un legajo mal cargado en el reloj con el de la persona real: pasa sus fichadas al legajo
+ * correcto, borra la ficha sobrante y recuerda la equivalencia para los próximos archivos.
+ */
+export function mergeLegajo(from, to) {
+  if (!from || !to || from === to) return 0;
+  let moved = 0;
+  setState((s) => {
+    const have = new Set(s.punches.filter((p) => p.l === to).map((p) => `${p.e}|${p.t}`));
+    const punches = [];
+    for (const p of s.punches) {
+      if (p.l !== from) { punches.push(p); continue; }
+      if (have.has(`${p.e}|${p.t}`)) continue; // ya estaba con el legajo correcto
+      punches.push({ ...p, l: to });
+      moved++;
+    }
+    const employees = { ...s.employees };
+    delete employees[from];
+    const leaves = s.leaves.map((l) => (l.legajo === from ? { ...l, legajo: to } : l));
+    const settings = { ...s.settings, legajoAlias: { ...(s.settings.legajoAlias || {}), [from]: to } };
+    return { ...s, punches, employees, leaves, settings };
+  });
+  return moved;
 }
 
 /** Pasa a "Apellido Nombre" los nombres escritos todo en mayúsculas o minúsculas. Devuelve cuántos cambió. */
