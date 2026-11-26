@@ -22,6 +22,19 @@ async function readAll(db, table, columns, filter) {
   }
 }
 
+/** Qué tipo de clave de Supabase es, sin mostrarla: ayuda a detectar si se cargó la pública por error. */
+function keyKind(key = '') {
+  const k = key.trim();
+  if (k.startsWith('sb_secret_')) return 'secreta (sb_secret_)';
+  if (k.startsWith('sb_publishable_')) return 'PÚBLICA (sb_publishable_): hay que cargar la secreta';
+  try {
+    const role = JSON.parse(Buffer.from(k.split('.')[1], 'base64url').toString()).role;
+    return role === 'service_role' ? 'secreta (service_role)' : `PÚBLICA (rol ${role}): hay que cargar la service_role`;
+  } catch {
+    return 'no reconocida (¿quedó un espacio o falta un pedazo?)';
+  }
+}
+
 export default async function handler(req, res) {
   const env = process.env;
   const url = new URL(req.url, 'http://x');
@@ -34,7 +47,7 @@ export default async function handler(req, res) {
   if (missing.length) return res.status(500).json({ error: `Faltan variables: ${missing.join(', ')}` });
 
   try {
-    const db = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    const db = createClient(env.VITE_SUPABASE_URL.trim(), env.SUPABASE_SERVICE_ROLE_KEY.trim(), { auth: { persistSession: false } });
     const today = todayInArgentina();
     const [tasks, emps] = await Promise.all([
       readAll(db, 'tasks', 'id,legajo,text,due,note,done', (q) => q.eq('done', false)),
@@ -66,6 +79,6 @@ export default async function handler(req, res) {
     if (!r.ok) return res.status(502).json({ error: 'Resend rechazó el envío', detail: body });
     return res.status(200).json({ sent: true, id: body.id, counts: digest.counts });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message, clave: keyKind(env.SUPABASE_SERVICE_ROLE_KEY) });
   }
 }
