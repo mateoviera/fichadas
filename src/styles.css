@@ -664,9 +664,8 @@ h2 { font-size: 22px; font-weight: 650; }
 /* Barra superior: buscador de personas y accesos rápidos */
 .topbar2 {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; display: flex; align-items: center; gap: 10px;
-  min-height: 60px; padding: 0 28px; background: rgb(255 255 255 / .85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+  min-height: 60px; padding: 0 28px; background: var(--surface); border-bottom: 1px solid var(--line);
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .topbar2 { background: rgb(17 23 35 / .85); } }
 .gsearch { position: relative; width: 400px; max-width: 100%; flex: 0 1 auto; }
 .gsearch .input { width: 100%; padding-left: 34px; background: var(--sunken); border-color: transparent; box-shadow: none; }
 .gsearch .input:focus { background: var(--surface); border-color: var(--accent); }

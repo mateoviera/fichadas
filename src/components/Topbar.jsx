@@ -44,7 +44,9 @@ export default function Topbar() {
     setOpen(false);
   };
 
+  // Las ventanas van fuera del <header>: dentro quedaban encerradas en la barra (60 px de alto).
   return (
+    <>
     <header className="topbar2 no-print">
       <div className="gsearch" ref={box}>
         <Icon name="search" size={16} />
@@ -79,9 +81,10 @@ export default function Topbar() {
       <span className="today-label">{DAYS[weekday(today)]} {Number(today.slice(8))} de {MONTHS[Number(today.slice(5, 7)) - 1]}</span>
       <button className="btn soft sm" onClick={() => setRequest({})}><Icon name="plus" size={15} />Solicitud</button>
       <button className="btn primary sm" onClick={() => setTask({})}><Icon name="plus" size={15} />Tarea</button>
+    </header>
       {person && <EmployeeDrawer legajo={person} onClose={() => setPerson(null)} />}
       {task && <TaskDialog task={task} onClose={() => setTask(null)} />}
       {request && <RequestDialog request={request} onClose={() => setRequest(null)} />}
-    </header>
+    </>
   );
 }
