@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useStore, upsertEmployee, bulkAssign, punchesByLegajo } from '../lib/store.js';
-import { useToast, Modal } from '../components/ui.jsx';
+import { useToast, Modal, Avatar } from '../components/ui.jsx';
 import { download, toCSV, parseCSV } from '../lib/io.js';
 import { fmtDate, todayKey } from '../lib/time.js';
 import { seniority, fmtSeniority, fmtStamp } from '../lib/personal.js';
@@ -150,10 +150,15 @@ export default function Personal() {
                 <tr key={e.legajo} className={`clickable ${gone ? 'dim' : ''}`} onClick={() => setDetail(e.legajo)}>
                   <td onClick={(ev) => ev.stopPropagation()}><input type="checkbox" aria-label={`Seleccionar ${e.name}`} checked={sel.has(e.legajo)} onChange={() => toggle(e.legajo)} /></td>
                   <td style={{ minWidth: 200 }}>
-                    <button className="person" onClick={(ev) => { ev.stopPropagation(); setDetail(e.legajo); }}>
-                      <b>{last || 'Sin nombre'}</b>{first && `, ${first}`}
-                    </button>
-                    <div className="small muted">Leg. {e.legajo}{e.dni ? ` · DNI ${e.dni}` : ''}{gone ? ` · baja ${fmtDate(e.exitDate)}` : ''}{noPunches && !gone ? ' · sin fichadas' : ''}</div>
+                    <div className="person-cell">
+                      <Avatar emp={e} size={34} title="" />
+                      <div>
+                        <button className="person" onClick={(ev) => { ev.stopPropagation(); setDetail(e.legajo); }}>
+                          <b>{last || 'Sin nombre'}</b>{first && `, ${first}`}
+                        </button>
+                        <div className="small muted">Leg. {e.legajo}{e.dni ? ` · DNI ${e.dni}` : ''}{gone ? ` · baja ${fmtDate(e.exitDate)}` : ''}{noPunches && !gone ? ' · sin fichadas' : ''}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="small">{e.position || <span className="muted">—</span>}{e.sector && <div className="muted">{e.sector}</div>}</td>
                   {/* <td className="small" style={{ maxWidth: 300 }}>{sch ? <span title={sch.name}>{scheduleSummary(sch)}</span> : <span className="pill neutral">Sin horario</span>}</td> Ver horario desde el personal */}

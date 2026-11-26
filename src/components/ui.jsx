@@ -178,3 +178,21 @@ export function Help({ summary = '¿Qué significa cada dato?', children }) {
     </details>
   );
 }
+
+const AV_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0d9488', '#0891b2', '#65a30d', '#c026d3', '#4f46e5', '#dc2626'];
+/** Iniciales de "Apellido Nombre" → "AN". */
+export function initials(name = '') {
+  const w = String(name).trim().split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || '') + (w[1]?.[0] || '')).toUpperCase() || '?';
+}
+/** Círculo con las iniciales de la persona; el color sale del legajo, así siempre es el mismo. */
+export function Avatar({ emp, size = 32, title }) {
+  const key = String(emp?.legajo || emp?.name || '');
+  let h = 0;
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (
+    <span className="avatar" style={{ '--av': `${size}px`, background: AV_COLORS[h % AV_COLORS.length] }} title={title ?? emp?.name} aria-hidden={title === '' ? true : undefined}>
+      {initials(emp?.name)}
+    </span>
+  );
+}

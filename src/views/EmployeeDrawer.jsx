@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore, upsertEmployee, deleteEmployee, createOwnSchedule, addManualPunch, removeManualPunch } from '../lib/store.js';
-import { Drawer, ConfirmButton, useToast, TimeInput, Stamp } from '../components/ui.jsx';
+import { Drawer, ConfirmButton, useToast, TimeInput, Stamp, Avatar } from '../components/ui.jsx';
 import RequestDialog, { STATUS_LABEL } from '../components/RequestDialog.jsx';
 import { ScheduleCard } from './Horarios.jsx';
 import { fmtDate, fmtTime, dateKey, keyToTs, hmToMin, todayKey, fmtDuration } from '../lib/time.js';
@@ -33,7 +33,7 @@ export default function EmployeeDrawer({ legajo, onClose, initialTab = 'datos' }
   return (
     <Drawer
       wide
-      title={<>{emp.name || 'Sin nombre'} <span className="mono muted">#{legajo}</span> {gone ? <span className="pill neutral">De baja</span> : <span className="pill ok">Activo</span>}</>}
+      title={<><span className="row" style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}><Avatar emp={emp} size={30} title="" /></span>{emp.name || 'Sin nombre'} <span className="mono muted">#{legajo}</span> {gone ? <span className="pill neutral">De baja</span> : <span className="pill ok">Activo</span>}</>}
       onClose={onClose}
       footer={
         <>
