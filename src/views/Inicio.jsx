@@ -31,6 +31,39 @@ function DateBadge({ date, kind = '' }) {
   );
 }
 
+/** Nombre corto del tipo de solicitud, para que entre en una etiqueta. */
+const SHORT_TYPE = { 'Día particular': 'Día particular', 'Franco compensatorio': 'Franco', 'Licencia médica': 'Licencia médica', 'Licencia por examen': 'Lic. por examen', 'Permiso por horas': 'Permiso por horas' };
+const shortType = (t) => SHORT_TYPE[t] || t;
+const TONE_COLOR = { vac: 'var(--ok)', day: 'var(--info)', med: '#9333ea', other: 'var(--muted)', hours: 'var(--accent)' };
+
+/** Renglón de una ausencia: avatar con aro del color del motivo, nombre, tipo y cuándo vuelve. */
+function AbsentRow({ l, emp, when, onOpen }) {
+  const tone = typeInfo(l.type).tone;
+  return (
+    <button type="button" className="absent-row" onClick={onOpen}>
+      <span className="absent-av" style={{ '--tone': TONE_COLOR[tone] }}><Avatar emp={emp} size={32} title="" /></span>
+      <span className="absent-main">
+        <b>{emp?.name || `Leg. ${l.legajo}`}</b>
+        <small>{when}</small>
+      </span>
+      <span className={`tag ${tone}`}>{shortType(l.type)}</span>
+    </button>
+  );
+}
+
+/** «2 Vacaciones · 1 Franco»: cuántas ausencias hay de cada tipo, con su color. */
+function TypeSummary({ leaves }) {
+  const count = new Map();
+  leaves.forEach((l) => count.set(l.type, (count.get(l.type) || 0) + 1));
+  return (
+    <div className="type-summary">
+      {[...count].sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+        <span key={t} className="type-chip"><i style={{ background: TONE_COLOR[typeInfo(t).tone] }} />{n} {shortType(t).toLowerCase()}</span>
+      ))}
+    </div>
+  );
+}
+
 /** Pantalla de inicio: widgets con lo que hay que mirar hoy y accesos a cada sección. */
 export default function Inicio() {
   const state = useStore();
@@ -108,7 +141,7 @@ export default function Inicio() {
 
       <div className="home-stats">
         {stat('#tareas', 'check', 'Tareas para hoy', overdue + forToday, overdue ? `${overdue} vencida${overdue === 1 ? '' : 's'}` : `${tasks.length} pendientes en total`, overdue ? 'bad' : forToday ? 'warn' : '')}
-        {stat('#solicitudes', 'plane', 'Ausentes hoy', absentToday.filter(isFullDay).length, 'Vacaciones, licencias y francos')}
+        {stat('#solicitudes', 'plane', 'Ausentes hoy', absentToday.filter(isFullDay).length, absentToday.length ? [...new Set(absentToday.map((l) => shortType(l.type).toLowerCase()))].join(', ').replace(/^./, (c) => c.toUpperCase()) : 'Nadie falta hoy')}
         {stat('#solicitudes', 'inbox', 'Solicitudes por resolver', pendingReq.length, 'Pendientes de aprobar', pendingReq.length ? 'warn' : '')}
         {stat('#personal', 'users', 'Personal activo', active.length, lastPunchDay ? `Fichadas hasta el ${fmtDate(lastPunchDay)}` : 'Todavía no hay fichadas')}
       </div>
@@ -210,26 +243,18 @@ export default function Inicio() {
             <div className="widget-body">
               <div className="widget-sub" style={{ marginTop: 0 }}>Ausentes hoy ({absentToday.length})</div>
               {absentToday.length ? (
-                <div className="avatars">
+                <>
+                  <TypeSummary leaves={absentToday} />
                   {absentToday.map((l) => (
-                    <button key={l.id} className="avatar-btn" onClick={() => setRequest(l)} title={`${name(l.legajo)} · ${l.type}${(l.to || l.from) !== today ? ` hasta el ${fmtDate(l.to)}` : ''}`}>
-                      <Avatar emp={emps[l.legajo]} size={38} title="" />
-                      <small>{(emps[l.legajo]?.name || '').split(' ')[0]}</small>
-                    </button>
+                    <AbsentRow key={l.id} l={l} emp={emps[l.legajo]} onOpen={() => setRequest(l)}
+                      when={l.type === HOURS ? `${l.startTime}–${l.endTime}` : (l.to || l.from) === today ? 'vuelve mañana' : `vuelve el ${dueText(addDays(l.to, 1), today).toLowerCase()}`} />
                   ))}
-                </div>
+                </>
               ) : <p className="muted small">Hoy no falta nadie por solicitudes cargadas.</p>}
               <div className="widget-sub">Salen en los próximos 7 días ({upcoming.length})</div>
-              {upcoming.length ? (
-                <div className="avatars">
-                  {upcoming.map((l) => (
-                    <button key={l.id} className="avatar-btn" onClick={() => setRequest(l)} title={`${name(l.legajo)} · ${l.type} desde ${dueText(l.from, today).toLowerCase()}`}>
-                      <Avatar emp={emps[l.legajo]} size={38} title="" />
-                      <small>{(emps[l.legajo]?.name || '').split(' ')[0]}</small>
-                    </button>
-                  ))}
-                </div>
-              ) : <p className="muted small">Nadie empieza vacaciones o licencias esta semana.</p>}
+              {upcoming.length ? upcoming.map((l) => (
+                <AbsentRow key={l.id} l={l} emp={emps[l.legajo]} onOpen={() => setRequest(l)} when={`desde el ${dueText(l.from, today).toLowerCase()} · ${leaveLength(l)} d`} />
+              )) : <p className="muted small">Nadie empieza vacaciones o licencias esta semana.</p>}
             </div>
           </section>
 
@@ -327,7 +352,7 @@ function MiniCalendar({ state, today, isActive, onRequest, onPerson }) {
           {hol.has(sel) && <span style={{ color: 'var(--bad)' }}>Feriado: {hol.get(sel)}</span>}
           {selAway.map((l) => (
             <button key={l.id} className="linklike" style={{ textAlign: 'left', textDecoration: 'none', color: 'inherit' }} onClick={() => onPerson(l.legajo)}>
-              <span style={{ color: 'var(--ok)' }}>●</span> {state.employees[l.legajo]?.name} <span className="muted">· {l.type}</span>
+              <span style={{ color: TONE_COLOR[typeInfo(l.type).tone] }}>●</span> {state.employees[l.legajo]?.name} <span className="muted">· {l.type}</span>
             </button>
           ))}
           {selTasks.map((t) => <span key={t.id}><span style={{ color: 'var(--warn)' }}>●</span> {t.text}</span>)}

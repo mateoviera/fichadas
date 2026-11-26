@@ -761,3 +761,16 @@ h2 { font-size: 22px; font-weight: 650; }
 .quick:hover { border-color: var(--accent); background: var(--accent-soft); }
 .quick svg { color: var(--accent); }
 .quick span { font-size: 12.5px; font-weight: 600; }
+
+/* Ausentes en el Inicio: motivo a la vista sin tener que tocar */
+.absent-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 6px; margin: 0 -6px; width: calc(100% + 12px); border: 0; border-radius: 10px; background: none; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.absent-row:hover { background: var(--sunken); }
+.absent-av { flex: none; display: inline-grid; border-radius: 50%; padding: 2px; box-shadow: 0 0 0 2px var(--tone); }
+.absent-av .avatar { box-shadow: none; }
+.absent-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.absent-main b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.absent-main small { font-size: 11.5px; color: var(--muted); }
+.absent-row .tag { flex: none; font-size: 11px; height: 20px; padding: 0 7px; }
+.type-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.type-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; color: var(--muted); background: var(--sunken); border-radius: 999px; padding: 2px 8px; }
+.type-chip i { width: 7px; height: 7px; border-radius: 50%; }
