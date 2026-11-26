@@ -158,7 +158,7 @@ export default function Inicio() {
           </section>
 
           <section className="panel task-section">
-            <header className="cal-head"><h3>Salen esta semana</h3></header>
+            <header className="cal-head"><h3>Salen en los próximos 7 días</h3></header>
             {upcoming.length
               ? <div className="task-list">{upcoming.map((l) => leaveRow(l, (x) => `desde ${dueText(x.from, today).toLowerCase()} · ${leaveLength(x)} d`))}</div>
               : <div className="home-empty">Nadie empieza vacaciones o licencias en los próximos 7 días.</div>}
