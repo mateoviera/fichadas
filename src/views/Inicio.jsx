@@ -79,8 +79,8 @@ export default function Inicio() {
     <>
       <div className="page-head">
         <div>
-          <h2>{greeting()}</h2>
-          <p>Hoy es {longDate(today)}. Esto es lo que hay para mirar.</p>
+          <h2>Resumen del día</h2>
+          <p>{greeting()}. Hoy es {longDate(today)}.</p>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default function Inicio() {
             </div>
             {urgent.length
               ? <div className="task-list">{urgent.slice(0, 10).map((t) => <TaskItem key={t.id} t={t} today={today} emp={emps[t.legajo]} onEdit={setTask} onOpenPerson={setPerson} />)}</div>
-              : <div className="home-empty">No hay nada urgente. 🎉</div>}
+              : <div className="home-empty">No hay tareas urgentes.</div>}
             {urgent.length > 10 && <a className="home-foot" href="#tareas">y {urgent.length - 10} más…</a>}
           </section>
 

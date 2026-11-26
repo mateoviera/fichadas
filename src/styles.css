@@ -1,17 +1,17 @@
 /* Layout: barra superior fija + una columna de trabajo (máx. 1180px); tablas densas, horarios en monoespaciada. */
 :root {
   /* Paleta al estilo shadcn/ui (zinc): superficies neutras, primario casi negro, bordes suaves. */
-  --bg: #fafafa;
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --sunken: #f4f4f5;
-  --ink: #09090b;
-  --muted: #71717a;
-  --line: #e4e4e7;
-  --accent: #18181b;
-  --accent-ink: #fafafa;
-  --accent-soft: #f4f4f5;
-  --ring: rgb(161 161 170 / .35);
-  --stripe: #a1a1aa;
+  --sunken: #f1f3f6;
+  --ink: #111827;
+  --muted: #5b6474;
+  --line: #dfe3ea;
+  --accent: #1e3a5f;
+  --accent-ink: #ffffff;
+  --accent-soft: #edf1f7;
+  --ring: rgb(30 58 95 / .22);
+  --stripe: #1e3a5f;
   --ok: #15803d;
   --ok-soft: #dcfce7;
   --warn: #b45309;
@@ -22,24 +22,25 @@
   --info-soft: #dbeafe;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / .05);
   --shadow-lg: 0 16px 48px rgb(0 0 0 / .14), 0 2px 6px rgb(0 0 0 / .06);
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --font-ui: 'Geist', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  --r: 6px;
+  --r: 4px;
   --ease: cubic-bezier(.16, 1, .3, 1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #09090b; --surface: #111113; --sunken: #1c1c20; --ink: #fafafa; --muted: #a1a1aa; --line: #27272a;
-    --accent: #fafafa; --accent-ink: #18181b; --accent-soft: #27272a; --ring: rgb(212 212 216 / .25); --stripe: #52525b;
+    --bg: #0b0f17; --surface: #111723; --sunken: #182030; --ink: #e8edf5; --muted: #98a3b6; --line: #253046;
+    --accent: #9db8e3; --accent-ink: #0b1526; --accent-soft: #1b2638; --ring: rgb(157 184 227 / .3); --stripe: #6f8fc2;
     --ok: #4ade80; --ok-soft: #14532d55; --warn: #fbbf24; --warn-soft: #78350f55; --bad: #f87171; --bad-soft: #7f1d1d55; --info: #93c5fd; --info-soft: #1e3a8a55;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .4); --shadow-lg: 0 16px 48px rgb(0 0 0 / .6);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #09090b; --surface: #111113; --sunken: #1c1c20; --ink: #fafafa; --muted: #a1a1aa; --line: #27272a;
-    --accent: #fafafa; --accent-ink: #18181b; --accent-soft: #27272a; --ring: rgb(212 212 216 / .25); --stripe: #52525b;
+  --bg: #0b0f17; --surface: #111723; --sunken: #182030; --ink: #e8edf5; --muted: #98a3b6; --line: #253046;
+    --accent: #9db8e3; --accent-ink: #0b1526; --accent-soft: #1b2638; --ring: rgb(157 184 227 / .3); --stripe: #6f8fc2;
     --ok: #4ade80; --ok-soft: #14532d55; --warn: #fbbf24; --warn-soft: #78350f55; --bad: #f87171; --bad-soft: #7f1d1d55; --info: #93c5fd; --info-soft: #1e3a8a55;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .4); --shadow-lg: 0 16px 48px rgb(0 0 0 / .6);
     color-scheme: dark;
@@ -624,3 +625,57 @@ main > *:nth-child(n+5) { animation-delay: .16s; }
 @media print {
   *, *::before, *::after { animation: none !important; }
 }
+
+
+/* =====================================================================
+   Tono formal / institucional (distinto de la app de la clínica):
+   menú claro, azul marino, títulos serif, bordes rectos, movimiento sobrio
+   ===================================================================== */
+h2, .page-head h2 { font-family: var(--font-serif); font-weight: 600; font-size: 26px; letter-spacing: -0.005em; }
+.cal-head h3, .modal-head h3, .drawer-head h3 { font-family: var(--font-serif); font-weight: 600; letter-spacing: 0; }
+.cal-head h3 { font-size: 17px; }
+.brand { font-family: var(--font-serif); font-size: 16.5px; font-weight: 600; letter-spacing: 0; }
+.brand-mark { border-radius: 3px; font-family: var(--font-mono); }
+.page-head { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.panel, .home-stat { border-radius: 6px; }
+.modal { border-radius: 8px; }
+.panel, .home-stat, .btn, .input, select.input, .seg { box-shadow: none; }
+.seg { border: 1px solid var(--line); background: var(--surface); padding: 2px; }
+.seg button { border-radius: 3px; }
+.seg button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 600; box-shadow: none; }
+.chip[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); }
+.btn.primary { box-shadow: none; }
+.btn.primary:hover { opacity: 1; filter: brightness(1.12); }
+
+/* Menú lateral claro con indicador fino de la sección activa. */
+.sidebar { background: var(--surface); }
+.side-link { border-radius: 3px; position: relative; }
+.side-link[aria-current='page'] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.side-link[aria-current='page']::before { content: ''; position: absolute; left: -12px; top: 6px; bottom: 6px; width: 3px; background: var(--accent); border-radius: 0 2px 2px 0; }
+.side-link[aria-current='page'] svg { color: var(--accent); }
+.side-group { letter-spacing: .1em; }
+
+/* Encabezados de tarjetas: título serif con línea fina, sin franja gruesa. */
+.cal-head { border-left: 0; padding-left: 16px; }
+.task-section .cal-head { border-left: 3px solid transparent; }
+.task-section.tone-bad .cal-head { border-left-color: var(--bad); }
+.task-section.tone-warn .cal-head { border-left-color: var(--warn); }
+.task-section.tone-info .cal-head { border-left-color: var(--info); }
+.home-stat::before { background: transparent; }
+.home-stat.warn::before { background: var(--warn); }
+.home-stat.bad::before { background: var(--bad); }
+.home-stat b { font-family: var(--font-serif); font-size: 32px; font-weight: 600; }
+.home-stat span { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; font-weight: 600; }
+.home-stat:hover { transform: none; box-shadow: none; border-color: var(--accent); background: var(--surface); }
+th { letter-spacing: .06em; }
+.tag.person { background: var(--accent-soft); color: var(--accent); }
+.home-more, .linklike { color: var(--accent); }
+
+/* Movimiento sobrio: entradas cortas, sin saltos ni rebotes. */
+@keyframes fade-up { from { opacity: 0; transform: translateY(4px); } }
+@keyframes zoom-in { from { opacity: 0; transform: scale(.98); } }
+main > *, .home-stats > *, .home-grid > .stack > * { animation-duration: .28s; }
+.count { animation: none; }
+.task-check[aria-pressed='true'] { animation: none; }
+.btn:active:not(:disabled) { transform: none; }
+.chip:active { transform: none; }
