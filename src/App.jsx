@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ToastProvider } from './components/ui.jsx';
-import { CLOUD, loadFromCloud, setActor } from './lib/store.js';
+import { CLOUD, loadFromCloud, setActor, useStore } from './lib/store.js';
+import { dueCount } from './lib/tasks.js';
+import { todayKey } from './lib/time.js';
 import { supabase, getSyncStatus, subscribeSync } from './lib/remote.js';
 import Reporte from './views/Reporte.jsx';
 import Personal from './views/Personal.jsx';
 import Solicitudes from './views/Solicitudes.jsx';
+import Tareas from './views/Tareas.jsx';
 import Horarios from './views/Horarios.jsx';
 import Archivos from './views/Archivos.jsx';
 import Ajustes from './views/Ajustes.jsx';
@@ -15,6 +18,7 @@ const TABS = [
   ['personal', 'Personal'],
   ['fichadas', 'Fichadas'],
   ['solicitudes', 'Vacaciones y solicitudes'],
+  ['tareas', 'Tareas'],
   ['horarios', 'Configuración'],
 ];
 const CONFIG = [
@@ -97,6 +101,7 @@ function Splash({ text, children }) {
 function Main({ user }) {
   const tab = useHash();
   if (user) setActor(user.email);
+  const due = useStore((s) => dueCount(s.tasks, todayKey()));
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [tab]);
@@ -108,7 +113,10 @@ function Main({ user }) {
           <div className="brand"><span className="brand-mark">GP</span>Gestión de Personal</div>
           <nav className="nav" aria-label="Secciones">
             {TABS.map(([k, label]) => (
-              <a key={k} href={`#${k}`} aria-current={tab === k || (k === 'horarios' && isConfig(tab)) ? 'page' : undefined}>{label}</a>
+              <a key={k} href={`#${k}`} aria-current={tab === k || (k === 'horarios' && isConfig(tab)) ? 'page' : undefined}>
+                {label}
+                {k === 'tareas' && due > 0 && <span className="count alert" title="Tareas vencidas o para hoy">{due}</span>}
+              </a>
             ))}
           </nav>
           {user && <UserBox user={user} />}
@@ -119,6 +127,7 @@ function Main({ user }) {
         {tab === 'personal' && <Personal />}
         {tab === 'fichadas' && <Reporte />}
         {tab === 'solicitudes' && <Solicitudes />}
+        {tab === 'tareas' && <Tareas />}
         {isConfig(tab) && (
           <>
             <div className="tabs" role="tablist" aria-label="Configuración">

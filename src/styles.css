@@ -434,3 +434,35 @@ table.people tr.clickable:hover td { background: var(--sunken); }
 .sheet-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 56px; break-inside: avoid; }
 .sheet-signs div { text-align: center; font-size: 10px; color: #333; }
 .sheet-signs span { display: block; border-top: 1px solid #000; margin-bottom: 4px; }
+
+/* ---------------- Tareas y recordatorios ---------------- */
+.count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--sunken); color: var(--muted); vertical-align: 1px; }
+.count.alert { background: var(--bad); color: #fff; }
+.task-section.tone-bad .cal-head { border-left-color: var(--bad); }
+.task-section.tone-warn .cal-head { border-left-color: var(--warn); }
+.task-section.tone-info .cal-head { border-left-color: var(--info); }
+.task-section.tone-neutral .cal-head { border-left-color: var(--line); }
+.task-section { overflow: hidden; }
+.task-section .cal-head { align-items: center; }
+.task-list { display: flex; flex-direction: column; }
+.task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.task:first-child { border-top: 0; }
+.task:hover { background: var(--sunken); }
+.task-check {
+  flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--muted); background: var(--surface);
+  display: grid; place-items: center; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--accent-ink); padding: 0;
+}
+.task-check:hover { border-color: var(--accent); }
+.task-check[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); }
+.task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; border: 0; background: none; padding: 1px 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.task-text { font-weight: 500; overflow-wrap: anywhere; }
+.task-note { font-size: 12.5px; color: var(--muted); white-space: pre-line; overflow-wrap: anywhere; }
+.task-meta { flex: none; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
+.task.done .task-text { text-decoration: line-through; color: var(--muted); }
+.tag.person { border: 0; cursor: pointer; background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 12px; font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.tag.person:hover { text-decoration: underline; }
+@media (max-width: 600px) {
+  .task { flex-wrap: wrap; }
+  .task-main { flex-basis: calc(100% - 32px); }
+  .task-meta { max-width: none; justify-content: flex-start; padding-left: 32px; }
+}

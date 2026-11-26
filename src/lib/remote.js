@@ -67,8 +67,8 @@ const COLLECTIONS = [
     name: 'schedules',
     list: (s) => s.schedules,
     key: (x) => x.id,
-    toRow: (x) => ({ id: x.id, name: x.name || '', type: x.type, blocks: x.blocks || [], v: x._v || '', updated_at: x.updatedAt || null, updated_by: x.updatedBy || '' }),
-    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, type: r.type, blocks: r.blocks, _v: r.v || '', updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '' })),
+    toRow: (x) => ({ id: x.id, name: x.name || '', type: x.type, split: !!x.split, blocks: x.blocks || [], v: x._v || '', updated_at: x.updatedAt || null, updated_by: x.updatedBy || '' }),
+    fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, type: r.type, split: !!r.split, blocks: r.blocks, _v: r.v || '', updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '' })),
   },
   {
     name: 'holidays',
@@ -99,6 +99,19 @@ const COLLECTIONS = [
     toRow: (x) => ({ id: x.id, name: x.name || '', max_concurrent: Number(x.max) || 0, note: x.note || '', updated_at: x.updatedAt || null, updated_by: x.updatedBy || '' }),
     fromRows: (rows) => rows.map((r) => ({ id: r.id, name: r.name, max: r.max_concurrent || 0, note: r.note || '', updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '' })).sort((a, b) => a.name.localeCompare(b.name, 'es')),
   },
+  {
+    name: 'tasks',
+    list: (s) => s.tasks || [],
+    key: (x) => x.id,
+    toRow: (x) => ({
+      id: x.id, legajo: x.legajo || '', text: x.text || '', due: x.due || null, note: x.note || '', done: !!x.done, done_at: x.doneAt || null,
+      created_at: x.createdAt || null, updated_at: x.updatedAt || null, updated_by: x.updatedBy || '',
+    }),
+    fromRows: (rows) => rows.map((r) => ({
+      id: r.id, legajo: r.legajo || '', text: r.text || '', due: r.due || '', note: r.note || '', done: !!r.done, doneAt: Number(r.done_at) || null,
+      createdAt: Number(r.created_at) || null, updatedAt: Number(r.updated_at) || null, updatedBy: r.updated_by || '',
+    })),
+  },
 ];
 
 /* ---------------- Estado de la sincronización (para mostrar en pantalla) ---------------- */
@@ -116,7 +129,7 @@ export const subscribeSync = (l) => (statusListeners.add(l), () => statusListene
 
 const MIGRATION_HINT = (e) =>
   /does not exist|schema cache|column/i.test(e?.message || '')
-    ? '. Falta actualizar la base: en Supabase → SQL Editor corré supabase/migrations/20261120000000_sistema_personal.sql (y antes 20261119000000_gestion_personal.sql si no lo corriste).'
+    ? '. Falta actualizar la base: en Supabase → SQL Editor corré supabase/migrations/20261126000000_tareas.sql (y antes las migraciones anteriores si no las corriste).'
     : '';
 
 const PAGE = 1000; // máximo de filas por pedido que permite Supabase por defecto

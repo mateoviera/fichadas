@@ -6,8 +6,11 @@ import { ScheduleCard } from './Horarios.jsx';
 import { fmtDate, fmtTime, dateKey, keyToTs, hmToMin, todayKey, fmtDuration } from '../lib/time.js';
 import { seniority, fmtSeniority, vacationBalance, fmtStamp, typeInfo, leaveLength, requestMinutes, HOURS } from '../lib/personal.js';
 import { scheduleLines } from '../lib/schedule.js';
+import TaskDialog from '../components/TaskDialog.jsx';
+import TaskItem from '../components/TaskItem.jsx';
+import { taskCompare } from '../lib/tasks.js';
 
-const TABS = [['datos', 'Datos'], ['horario', 'Horario'], ['solicitudes', 'Vacaciones y solicitudes'], ['manuales', 'Fichadas manuales']];
+const TABS = [['datos', 'Datos'], ['horario', 'Horario'], ['solicitudes', 'Vacaciones y solicitudes'], ['tareas', 'Tareas'], ['manuales', 'Fichadas manuales']];
 
 /** Separa "Apellido Nombre" cuando todavía no se cargaron por separado (solo para mostrar). */
 export function splitName(e) {
@@ -44,11 +47,15 @@ export default function EmployeeDrawer({ legajo, onClose, initialTab = 'datos' }
       }
     >
       <div className="tabs compact" role="tablist">
-        {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}
+        {TABS.map(([k, l]) => {
+          const n = k === 'tareas' ? (state.tasks || []).filter((t) => t.legajo === legajo && !t.done).length : 0;
+          return <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}{n > 0 && <span className="count">{n}</span>}</button>;
+        })}
       </div>
       {tab === 'datos' && <Datos emp={emp} state={state} />}
       {tab === 'horario' && <Horario emp={emp} state={state} />}
       {tab === 'solicitudes' && <Solicitudes emp={emp} state={state} />}
+      {tab === 'tareas' && <Tareas emp={emp} state={state} />}
       {tab === 'manuales' && <Manuales emp={emp} state={state} />}
     </Drawer>
   );
@@ -171,6 +178,35 @@ function Solicitudes({ emp, state }) {
         </div>
       )}
       {dialog && <RequestDialog request={dialog} lockPerson onClose={() => setDialog(null)} />}
+    </div>
+  );
+}
+
+function Tareas({ emp, state }) {
+  const [dialog, setDialog] = useState(null);
+  const [showDone, setShowDone] = useState(false);
+  const today = todayKey();
+  const mine = (state.tasks || []).filter((t) => t.legajo === emp.legajo);
+  const pending = mine.filter((t) => !t.done).sort(taskCompare);
+  const done = mine.filter((t) => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  const item = (t) => <TaskItem key={t.id} t={t} today={today} onEdit={setDialog} />;
+  return (
+    <div className="stack">
+      <div className="row">
+        <span className="muted small">Cosas pendientes con {emp.name || 'esta persona'} o que tenés que avisarle. También aparecen en la sección Tareas.</span>
+        <span className="spacer" />
+        <button className="btn primary sm" onClick={() => setDialog({ legajo: emp.legajo })}>Nueva tarea</button>
+      </div>
+      {pending.length > 0
+        ? <div className="panel task-list">{pending.map(item)}</div>
+        : <div className="panel empty">No hay tareas pendientes.</div>}
+      {done.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <button className="linklike small" style={{ width: 'fit-content' }} onClick={() => setShowDone((v) => !v)}>{showDone ? 'Ocultar' : 'Ver'} hechas ({done.length})</button>
+          {showDone && <div className="panel task-list">{done.map(item)}</div>}
+        </div>
+      )}
+      {dialog && <TaskDialog task={dialog} lockPerson onClose={() => setDialog(null)} />}
     </div>
   );
 }

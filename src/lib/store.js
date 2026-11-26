@@ -69,6 +69,7 @@ const empty = () => ({
   holidays: [], // { date, name }
   leaves: [], // solicitudes: { id, legajo, from, to, type, status: 'aprobada'|'pendiente'|'rechazada', exception, note, startTime?, endTime?, createdAt, updatedAt, updatedBy }
   vacGroups: [], // { id, name, max (0 = sin control), note, updatedAt, updatedBy }
+  tasks: [], // tareas y recordatorios: { id, legajo ('' = propia), text, due, note, done, doneAt, createdAt, updatedAt, updatedBy }
   settings: { ...DEFAULT_SETTINGS },
 });
 
@@ -212,12 +213,12 @@ export function bulkAssign(legajos, patch) {
   });
 }
 
-/** Borra a la persona y sus solicitudes. Las fichadas del reloj se conservan. */
+/** Borra a la persona, sus solicitudes y sus tareas. Las fichadas del reloj se conservan. */
 export function deleteEmployee(legajo) {
   setState((s) => {
     const employees = { ...s.employees };
     delete employees[legajo];
-    return { ...s, employees, leaves: s.leaves.filter((l) => l.legajo !== legajo) };
+    return { ...s, employees, leaves: s.leaves.filter((l) => l.legajo !== legajo), tasks: (s.tasks || []).filter((t) => t.legajo !== legajo) };
   });
 }
 
@@ -312,6 +313,27 @@ export function removeLeave(id) {
   setState((s) => ({ ...s, leaves: s.leaves.filter((l) => l.id !== id) }));
 }
 
+/* ---------------- Tareas y recordatorios ---------------- */
+
+export function addTask(task) {
+  const id = uid();
+  setState((s) => ({ ...s, tasks: (s.tasks || []).concat({ id, legajo: '', text: '', due: '', note: '', done: false, doneAt: null, createdAt: Date.now(), ...task, ...stamp() }) }));
+  return id;
+}
+
+export function updateTask(id, patch) {
+  setState((s) => ({ ...s, tasks: (s.tasks || []).map((t) => (t.id === id ? { ...t, ...patch, ...stamp() } : t)) }));
+}
+
+export function toggleTask(id) {
+  const t = (state.tasks || []).find((x) => x.id === id);
+  if (t) updateTask(id, { done: !t.done, doneAt: t.done ? null : Date.now() });
+}
+
+export function removeTask(id) {
+  setState((s) => ({ ...s, tasks: (s.tasks || []).filter((t) => t.id !== id) }));
+}
+
 export function addManualPunch({ legajo, estId, ts, note }) {
   setState((s) => ({ ...s, punches: s.punches.concat({ id: uid(), e: estId, l: legajo, t: ts, f: 'manual', m: note || 'Manual' }) }));
 }
@@ -339,8 +361,9 @@ export function mergeLegajo(from, to) {
     const employees = { ...s.employees };
     delete employees[from];
     const leaves = s.leaves.map((l) => (l.legajo === from ? { ...l, legajo: to } : l));
+    const tasks = (s.tasks || []).map((t) => (t.legajo === from ? { ...t, legajo: to } : t));
     const settings = { ...s.settings, legajoAlias: { ...(s.settings.legajoAlias || {}), [from]: to } };
-    return { ...s, punches, employees, leaves, settings };
+    return { ...s, punches, employees, leaves, tasks, settings };
   });
   return moved;
 }
