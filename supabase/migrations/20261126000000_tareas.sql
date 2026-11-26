@@ -19,6 +19,8 @@ create index if not exists tasks_legajo_idx on tasks (legajo);
 alter table tasks enable row level security;
 drop policy if exists "usuarios autenticados" on tasks;
 create policy "usuarios autenticados" on tasks for all to authenticated using (true) with check (true);
+revoke all on tasks from anon;
+grant select, insert, update, delete on tasks to authenticated;
 
 -- Rotativo con turno cortado: los tramos del día forman un solo turno (ej. 4 h + 4 h = 8 h).
 alter table schedules add column if not exists split boolean not null default false;
