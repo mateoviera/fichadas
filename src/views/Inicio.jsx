@@ -138,10 +138,6 @@ export default function Inicio() {
           <h2>Inicio</h2>
           <p>{longDate(today).replace(/^./, (c) => c.toUpperCase())}</p>
         </div>
-        <div className="row">
-          <button className="btn soft" onClick={() => setRequest({})}><Icon name="plus" size={15} />Solicitud</button>
-          <button className="btn primary" onClick={() => setTask({})}><Icon name="plus" size={15} />Tarea</button>
-        </div>
       </div>
 
       <div className="home-stats">
