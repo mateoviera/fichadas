@@ -9,7 +9,7 @@ import Personal from './views/Personal.jsx';
 import Solicitudes from './views/Solicitudes.jsx';
 import Tareas from './views/Tareas.jsx';
 import Inicio from './views/Inicio.jsx';
-import Topbar from './components/Topbar.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { Icon } from './components/Icon.jsx';
 import Horarios from './views/Horarios.jsx';
 import Archivos from './views/Archivos.jsx';
@@ -104,7 +104,14 @@ function Splash({ text, children }) {
 function Main({ user }) {
   const tab = useHash();
   const [open, setOpen] = useState(false);
+  const [palette, setPalette] = useState(false);
   if (user) setActor(user.email);
+  useEffect(() => {
+    // Ctrl+K (o Cmd+K en Mac) abre el buscador desde cualquier pantalla.
+    const k = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(false); setPalette((v) => !v); } };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, []);
   const today = todayKey();
   const due = useStore((s) => dueCount(s.tasks, today));
   const pendingReq = useStore((s) => s.leaves.filter((l) => l.status === 'pendiente').length);
@@ -127,11 +134,17 @@ function Main({ user }) {
       <header className="mobilebar no-print">
         <button className="btn ghost icon-btn" onClick={() => setOpen(true)} aria-label="Abrir menú"><Icon name="menu" size={20} /></button>
         <b>{current?.[1]}</b>
+        <button className="btn ghost icon-btn" onClick={() => setPalette(true)} aria-label="Buscar"><Icon name="search" size={19} /></button>
         {due > 0 && <a href="#tareas" className="count alert" title="Tareas vencidas o para hoy">{due}</a>}
       </header>
       {open && <div className="scrim side-scrim" onClick={() => setOpen(false)} />}
       <aside className={`sidebar no-print ${open ? 'open' : ''}`} aria-label="Menú">
         <div className="brand"><span className="brand-mark">GP</span>Gestión de Personal</div>
+        <button type="button" className="side-search" onClick={() => { setOpen(false); setPalette(true); }}>
+          <Icon name="search" size={16} />
+          <span>Buscar…</span>
+          <kbd>Ctrl K</kbd>
+        </button>
         <nav className="side-nav" aria-label="Secciones">
           {NAV.map(link)}
           <div className="side-group">Configuración</div>
@@ -140,7 +153,6 @@ function Main({ user }) {
         {user && <UserBox user={user} />}
       </aside>
       <div className="content">
-        <Topbar />
         <SyncError />
         <main key={tab}>
           {tab === 'inicio' && <Inicio />}
@@ -153,6 +165,7 @@ function Main({ user }) {
           {tab === 'ajustes' && <Ajustes />}
         </main>
       </div>
+      <CommandPalette open={palette} onClose={() => setPalette(false)} sections={ALL} />
     </div>
   );
 }

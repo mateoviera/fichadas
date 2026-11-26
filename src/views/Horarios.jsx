@@ -22,7 +22,14 @@ export default function Horarios() {
     input.focus({ preventScroll: true });
     input.select();
   }, [fresh]);
-  const [q, setQ] = useState('');
+  // El buscador rápido (Ctrl+K) puede abrir esta sección con un horario ya buscado.
+  const takeQ = () => { const v = sessionStorage.getItem('horarios-q') || ''; sessionStorage.removeItem('horarios-q'); return v; };
+  const [q, setQ] = useState(takeQ);
+  useEffect(() => {
+    const on = () => { const v = takeQ(); if (v) setQ(v); };
+    window.addEventListener('horarios-q', on);
+    return () => window.removeEventListener('horarios-q', on);
+  }, []);
   const [typeF, setTypeF] = useState('');
   const [unused, setUnused] = useState(false);
   const rank = (id) => { const i = fresh.indexOf(id); return i < 0 ? Infinity : i; };

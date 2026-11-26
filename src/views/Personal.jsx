@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, upsertEmployee, bulkAssign, punchesByLegajo } from '../lib/store.js';
 import { useToast, Modal, Avatar } from '../components/ui.jsx';
 import { download, toCSV, parseCSV } from '../lib/io.js';
@@ -18,7 +18,13 @@ export default function Personal() {
   const [sel, setSel] = useState(() => new Set());
   const [bulk, setBulk] = useState({ sch: '', sector: '', group: '' });
   const [detail, setDetail] = useState(null);
-  const [adding, setAdding] = useState(false);
+  // El buscador rápido (Ctrl+K) puede pedir que se abra el alta al llegar.
+  const [adding, setAdding] = useState(() => { const v = sessionStorage.getItem('personal-add'); sessionStorage.removeItem('personal-add'); return !!v; });
+  useEffect(() => {
+    const on = () => { sessionStorage.removeItem('personal-add'); setAdding(true); };
+    window.addEventListener('personal-add', on);
+    return () => window.removeEventListener('personal-add', on);
+  }, []);
   const fileRef = useRef();
 
   const byLeg = useMemo(() => punchesByLegajo(state.punches), [state.punches]);
