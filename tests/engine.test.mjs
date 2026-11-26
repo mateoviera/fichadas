@@ -145,3 +145,12 @@ test('llegada temprana y horas extra van aparte de las horas trabajadas', () => 
   assert.equal(s.extra, 75);
   assert.equal(s.saldo, 0);
 });
+
+test('rotativo cortado: el turno del día suma los dos tramos (4 h + 4 h = 8 h)', async () => {
+  const { shiftMinutes, rotativoQuota } = await import('../src/lib/engine.js');
+  const sch = { id: 'cort', type: 'rotativo', split: true, blocks: [{ start: '08:30', end: '12:30' }, { start: '16:30', end: '20:30' }] };
+  assert.equal(shiftMinutes(sch), 480);
+  assert.equal(shiftMinutes({ ...sch, split: false }), 240);
+  const q = rotativoQuota({ schedule: sch, from: '2026-11-01', to: '2026-11-30' });
+  assert.equal(q.minutes, q.days * 480);
+});

@@ -78,7 +78,9 @@ export function computeReport(state, { from, to, estId = '', sector = '', q = ''
       summary.quota = quota;
       summary.expected = quota.minutes;
       summary.saldo = summary.worked - quota.minutes;
-      summary.daysWorked = rows.filter((r) => r.inst && r.entry && r.exit).length;
+      const full = rows.filter((r) => r.inst && r.entry && r.exit);
+      // En turno cortado, un día cuenta como turno completo aunque tenga dos tramos.
+      summary.daysWorked = sch.split ? new Set(full.map((r) => r.date)).size : full.length;
     }
     const shown = rows.filter((r) => rowMatches(r, status));
     if ((!rows.length && !summary.quota?.minutes) || (status !== 'todos' && !shown.length)) continue;

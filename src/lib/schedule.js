@@ -29,7 +29,7 @@ export function blockText(b, estName) {
 /** Lista de renglones legibles de un horario. */
 export function scheduleLines(sch, estName) {
   if (!sch) return [];
-  if (sch.type === 'rotativo') return [`Rotativo: ${sch.blocks.map((b) => blockText(b, estName)).join(' · ')}`];
+  if (sch.type === 'rotativo') return [`${sch.split ? 'Rotativo cortado' : 'Rotativo'}: ${sch.blocks.map((b) => blockText(b, estName)).join(' · ')}`];
   return sch.blocks.map((b) => `${daysText(b.days)} ${blockText(b, estName)}`);
 }
 
@@ -37,6 +37,6 @@ export function scheduleLines(sch, estName) {
 export function scheduleSummary(sch, max = 2) {
   if (!sch) return '';
   const lines = scheduleLines(sch);
-  if (sch.type === 'rotativo') return 'Rotativo';
+  if (sch.type === 'rotativo') return sch.split ? 'Rotativo cortado' : 'Rotativo';
   return lines.slice(0, max).join(' · ') + (lines.length > max ? ` · +${lines.length - max} más` : '');
 }

@@ -415,6 +415,8 @@ export const ROT_FRANCOS = [1, 2, 1, 2];
 
 /** Duración de turno más frecuente de un horario (en minutos). Ej.: rotativo de enfermería = 480. */
 export function shiftMinutes(schedule) {
+  // Turno cortado: cada día hace todos los tramos (ej. 08:30–12:30 y 16:30–20:30 = 8 h).
+  if (schedule?.split) return (schedule.blocks || []).reduce((a, b) => a + blockDuration(b), 0);
   const count = new Map();
   for (const b of schedule?.blocks || []) {
     const d = blockDuration(b);

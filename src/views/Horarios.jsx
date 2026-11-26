@@ -67,7 +67,15 @@ export function ScheduleCard({ s, used, establishments, isNew }) {
         <ConfirmButton confirmLabel="Eliminar horario" onConfirm={() => deleteSchedule(s.id)}>Eliminar</ConfirmButton>
       </div>
       <div className="panel-pad" style={{ paddingTop: 4, paddingBottom: 8 }}>
-        {s.type === 'rotativo' && <p className="muted small" style={{ padding: '8px 0' }}>Turnos posibles (la persona puede hacer cualquiera de ellos cualquier día):</p>}
+        {s.type === 'rotativo' && (
+          <div style={{ padding: '8px 0' }}>
+            <label className="row small" style={{ gap: 6, marginBottom: 6 }}>
+              <input type="checkbox" checked={!!s.split} onChange={(e) => set({ split: e.target.checked })} />
+              <span><b>Turno cortado</b>: cada día de trabajo hace todos los tramos (ej. 08:30–12:30 y 16:30–20:30 = un turno de 8 h). Los francos siguen siendo 1, 2, 1 y 2 por semana.</span>
+            </label>
+            <p className="muted small">{s.split ? `Tramos del turno (total ${fmtDuration(s.blocks.reduce((a, b) => a + blockDuration(b), 0))} h por día):` : 'Turnos posibles (la persona puede hacer cualquiera de ellos cualquier día):'}</p>
+          </div>
+        )}
         {s.blocks.map((b, i) => {
           const overnight = hmToMin(b.end) <= hmToMin(b.start);
           return (
@@ -102,7 +110,7 @@ export function ScheduleCard({ s, used, establishments, isNew }) {
           );
         })}
         <div style={{ padding: '8px 0' }}>
-          <button className="btn sm" onClick={addBlock}>{s.type === 'rotativo' ? 'Agregar turno' : 'Agregar bloque'}</button>
+          <button className="btn sm" onClick={addBlock}>{s.type === 'rotativo' ? (s.split ? 'Agregar tramo' : 'Agregar turno') : 'Agregar bloque'}</button>
           {s.type === 'fijo' && <span className="muted small" style={{ marginLeft: 8 }}>Usá varios bloques para horario cortado (ej. 08–12 y 16–20) o para días con horario distinto.</span>}
         </div>
       </div>
