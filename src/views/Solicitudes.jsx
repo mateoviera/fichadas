@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { download } from '../lib/io.js';
+import { buildXlsx } from '../lib/xlsx.js';
+import { liquidacionSheets, monthLeaves, unpaidSummary } from '../lib/liquidacion.js';
 import { useStore, upsertEmployee, bulkAssign, updateLeave, saveVacGroup, deleteVacGroup } from '../lib/store.js';
 import { ConfirmButton, useToast, WarnDialog, Stamp, Help } from '../components/ui.jsx';
 import RequestDialog, { STATUS_LABEL } from '../components/RequestDialog.jsx';
@@ -123,6 +126,7 @@ function Calendario({ onOpen }) {
         <span className="legend"><i className="lg vac" /> Vacaciones</span>
         <span className="legend"><i className="lg day" /> Día particular / franco</span>
         <span className="legend"><i className="lg med" /> Licencia médica</span>
+        <span className="legend"><i className="lg unpaid" /> Sin goce de sueldo</span>
         <span className="legend"><i className="lg other" /> Otras</span>
         <span className="legend"><i className="lg pend" /> Pendiente</span>
         <span className="legend"><i className="lg clash" /> Se pisa</span>
@@ -202,6 +206,31 @@ function Calendario({ onOpen }) {
 
 /* ---------------- Lista de solicitudes ---------------- */
 
+/** Exportación del mes para liquidación de sueldos (con goce / sin goce de sueldo). */
+function Liquidacion({ state }) {
+  const toast = useToast();
+  const today = todayKey();
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const sum = unpaidSummary(state, month);
+  const count = monthLeaves(state, month).length;
+  const exportXlsx = () => {
+    download(`ausencias-liquidacion-${month}.xlsx`, buildXlsx(liquidacionSheets(state, month)));
+    toast('Excel para liquidación generado');
+  };
+  return (
+    <div className="panel panel-pad liq">
+      <b>Para liquidación</b>
+      <input id="liq-month" type="month" className="input" value={month} onChange={(e) => setMonth(e.target.value || today.slice(0, 7))} aria-label="Mes" />
+      <span className="small muted">
+        {count} {count === 1 ? 'ausencia aprobada' : 'ausencias aprobadas'}
+        {sum.days > 0 && <> · <span className="tag unpaid">{sum.days} {sum.days === 1 ? 'día' : 'días'} sin goce de sueldo</span> ({sum.people} {sum.people === 1 ? 'persona' : 'personas'})</>}
+      </span>
+      <span className="spacer" />
+      <button className="btn" disabled={!count} onClick={exportXlsx}>Exportar Excel del mes</button>
+    </div>
+  );
+}
+
 function Lista({ onOpen }) {
   const state = useStore();
   const toast = useToast();
@@ -262,6 +291,8 @@ function Lista({ onOpen }) {
         </select>
         <input id="l-q" className="input" placeholder="Buscar persona" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+
+      <Liquidacion state={state} />
 
       <div className="panel">
         <table className="req-table">

@@ -4,7 +4,7 @@ import { Drawer, ConfirmButton, useToast, TimeInput, Stamp, Avatar } from '../co
 import RequestDialog, { STATUS_LABEL } from '../components/RequestDialog.jsx';
 import { ScheduleCard } from './Horarios.jsx';
 import { fmtDate, fmtTime, dateKey, keyToTs, hmToMin, todayKey, fmtDuration } from '../lib/time.js';
-import { seniority, fmtSeniority, vacationBalance, fmtStamp, typeInfo, leaveLength, requestMinutes, HOURS } from '../lib/personal.js';
+import { seniority, fmtSeniority, vacationBalance, fmtStamp, typeInfo, leaveLength, requestMinutes, isPaid, HOURS } from '../lib/personal.js';
 import { scheduleLines } from '../lib/schedule.js';
 import TaskDialog from '../components/TaskDialog.jsx';
 import TaskItem from '../components/TaskItem.jsx';
@@ -150,6 +150,7 @@ function Solicitudes({ emp, state }) {
   const year = Number(todayKey().slice(0, 4));
   const bal = vacationBalance(emp, state.leaves, year);
   const list = state.leaves.filter((l) => l.legajo === emp.legajo).sort((a, b) => b.from.localeCompare(a.from));
+  const unpaid = list.filter((l) => !isPaid(l) && l.status !== 'rechazada' && l.from.startsWith(String(year))).reduce((n, l) => n + leaveLength(l), 0);
   return (
     <div className="stack">
       <div className="facts">
@@ -157,6 +158,7 @@ function Solicitudes({ emp, state }) {
         <div><span>Aprobadas</span><b>{bal.approved}</b></div>
         <div><span>Pendientes</span><b>{bal.pending}</b></div>
         <div><span>Disponibles</span><b className={bal.left < 0 ? 'bad-text' : ''}>{bal.corr ? bal.corr.days - bal.approved - bal.pending : '—'}</b></div>
+        {unpaid > 0 && <div><span>Sin goce de sueldo {year}</span><b style={{ color: '#ea580c' }}>{unpaid} {unpaid === 1 ? 'día' : 'días'}</b></div>}
       </div>
       <div className="row">
         <span className="muted small">{list.length} {list.length === 1 ? 'solicitud' : 'solicitudes'}</span>

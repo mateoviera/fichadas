@@ -3,6 +3,7 @@ import { eachDay, keyToTs, DAY, weekday, todayKey } from './time.js';
 
 export const VACATION = 'Vacaciones';
 export const HOURS = 'Permiso por horas';
+export const UNPAID = 'Licencia sin goce de sueldo';
 
 /**
  * Tipos de solicitud. `fullDay`: ocupa días completos (cuenta para la disponibilidad del grupo y
@@ -16,11 +17,31 @@ export const REQUEST_TYPES = [
   { id: 'Licencia por examen', tone: 'other', fullDay: true },
   { id: 'Capacitación', tone: 'other', fullDay: true },
   { id: HOURS, tone: 'hours', fullDay: false },
+  { id: UNPAID, tone: 'unpaid', fullDay: true, paid: false },
   { id: 'Otra', tone: 'other', fullDay: true },
 ];
 const TYPE = Object.fromEntries(REQUEST_TYPES.map((t) => [t.id, t]));
 export const typeInfo = (id) => TYPE[id] || { id, tone: 'other', fullDay: true };
 export const isFullDay = (l) => typeInfo(l.type).fullDay;
+/** Si la ausencia se paga (todas menos la licencia sin goce de sueldo). */
+export const isPaid = (l) => typeInfo(l.type).paid !== false;
+
+/**
+ * Cuántos días de vacaciones le quedan a la persona en el año de `draft.from` (sin contar `draft`)
+ * y cuántos pide. `extra` = días que se pasa. Sirve para ofrecer dividir en vacaciones + sin goce.
+ */
+export function vacationRoom(state, draft) {
+  const emp = state.employees[draft.legajo];
+  const year = Number(draft.from.slice(0, 4));
+  const corr = vacationDays(emp?.hireDate, year);
+  if (!corr) return null;
+  const used = state.leaves
+    .filter((l) => l.id !== draft.id && l.legajo === draft.legajo && l.type === VACATION && l.status !== 'rechazada' && l.from.startsWith(String(year)))
+    .reduce((a, l) => a + leaveLength(l), 0);
+  const want = leaveLength({ from: draft.from, to: draft.to || draft.from });
+  const left = Math.max(0, corr.days - used);
+  return { year, corr: corr.days, used, left, want, extra: Math.max(0, want - left) };
+}
 
 /** "19/11/2026 14:32 · nombre" para mostrar la última modificación. */
 export function fmtStamp(x) {

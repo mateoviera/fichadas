@@ -171,3 +171,27 @@ test('un permiso por horas no excusa la ausencia del día', () => {
   };
   assert.equal(computeReport(state, { from: '2026-11-02', to: '2026-11-03' }).list[0].summary.ausente, 1);
 });
+
+test('vacaciones que superan el saldo: se calcula cuánto queda y cuánto va sin goce', async () => {
+  const { vacationRoom } = await import('../src/lib/personal.js');
+  const { liquidacionSheets, unpaidSummary } = await import('../src/lib/liquidacion.js');
+  const state = {
+    employees: { 7: { legajo: '7', name: 'Prueba Ana', hireDate: '2023-01-10', cuil: '27-1-1' } },
+    leaves: [
+      { id: 'a', legajo: '7', type: 'Vacaciones', from: '2026-03-02', to: '2026-03-08', status: 'aprobada' },
+      { id: 'b', legajo: '7', type: 'Vacaciones', from: '2026-07-20', to: '2026-07-26', status: 'aprobada' },
+      { id: 'c', legajo: '7', type: 'Licencia sin goce de sueldo', from: '2026-07-27', to: '2026-08-02', status: 'aprobada' },
+    ],
+  };
+  // 14 días por antigüedad < 5 años; ya usó 7 (marzo) → con el pedido de julio (7) no se pasa
+  const room = vacationRoom(state, { id: 'b', legajo: '7', from: '2026-07-20', to: '2026-08-02' });
+  assert.equal(room.left, 7);
+  assert.equal(room.want, 14);
+  assert.equal(room.extra, 7);
+  // En julio: 5 días sin goce (27 al 31); en agosto, 2.
+  assert.deepEqual(unpaidSummary(state, '2026-07'), { days: 5, people: 1 });
+  assert.deepEqual(unpaidSummary(state, '2026-08'), { days: 2, people: 1 });
+  const [summary, detail] = liquidacionSheets(state, '2026-07');
+  assert.deepEqual(summary.rows[1].slice(3, 5), [7, 5]);
+  assert.equal(detail.rows.find((r) => r[4] === 'Licencia sin goce de sueldo')[5], 'NO');
+});

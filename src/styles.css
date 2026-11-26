@@ -776,3 +776,16 @@ kbd { font: 500 10.5px var(--font-mono); padding: 2px 5px; border-radius: 5px; b
 .cmdk-foot { display: flex; gap: 16px; flex-wrap: wrap; padding: 9px 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); background: var(--sunken); }
 .cmdk-foot kbd { margin-right: 3px; }
 @media (max-width: 600px) { .cmdk-foot { display: none; } .cmdk-wrap { padding-top: 12px; } }
+
+/* Licencia sin goce de sueldo: naranja, para que se distinga en todos lados */
+.tag.unpaid, .lg.unpaid { background: #ffedd5; color: #c2410c; }
+.cal td.on.unpaid { background: #ffedd5; box-shadow: inset 0 -4px 0 #ea580c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .tag.unpaid, :root:not([data-theme='light']) .lg.unpaid { background: #431407; color: #fdba74; }
+  :root:not([data-theme='light']) .cal td.on.unpaid { background: #431407; }
+}
+.split-box b { font-weight: 600; }
+.split-parts { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; color: var(--ink); }
+.split-parts .tag { margin-right: 4px; }
+.liq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.liq .input { width: auto; }

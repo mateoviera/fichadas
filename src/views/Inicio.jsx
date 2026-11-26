@@ -32,9 +32,9 @@ function DateBadge({ date, kind = '' }) {
 }
 
 /** Nombre corto del tipo de solicitud, para que entre en una etiqueta. */
-const SHORT_TYPE = { 'Día particular': 'Día particular', 'Franco compensatorio': 'Franco', 'Licencia médica': 'Licencia médica', 'Licencia por examen': 'Lic. por examen', 'Permiso por horas': 'Permiso por horas' };
+const SHORT_TYPE = { 'Día particular': 'Día particular', 'Franco compensatorio': 'Franco', 'Licencia médica': 'Licencia médica', 'Licencia por examen': 'Lic. por examen', 'Permiso por horas': 'Permiso por horas', 'Licencia sin goce de sueldo': 'Sin goce de sueldo' };
 const shortType = (t) => SHORT_TYPE[t] || t;
-const TONE_COLOR = { vac: 'var(--ok)', day: 'var(--info)', med: '#9333ea', other: 'var(--muted)', hours: 'var(--accent)' };
+const TONE_COLOR = { unpaid: '#ea580c', vac: 'var(--ok)', day: 'var(--info)', med: '#9333ea', other: 'var(--muted)', hours: 'var(--accent)' };
 
 /** Renglón de una ausencia: avatar con aro del color del motivo, nombre, tipo y cuándo vuelve. */
 function AbsentRow({ l, emp, when, onOpen }) {

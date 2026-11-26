@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useStore, addLeave, updateLeave, removeLeave } from '../lib/store.js';
 import { Modal, WarnDialog, ConfirmButton, Stamp, TimeInput, useToast } from './ui.jsx';
-import { REQUEST_TYPES, VACATION, HOURS, checkRequest, leaveLength, vacationBalance, requestMinutes, fmtStamp, fmtSeniority, seniority } from '../lib/personal.js';
-import { todayKey, fmtDuration } from '../lib/time.js';
+import { REQUEST_TYPES, VACATION, HOURS, UNPAID, checkRequest, leaveLength, vacationBalance, vacationRoom, requestMinutes, fmtStamp, fmtSeniority, seniority } from '../lib/personal.js';
+import { todayKey, fmtDuration, addDays } from '../lib/time.js';
 
 export const STATUS_LABEL = { aprobada: 'Aprobada', pendiente: 'Pendiente', rechazada: 'Rechazada' };
 
@@ -43,6 +43,24 @@ export default function RequestDialog({ request = {}, onClose, lockPerson = fals
   const valid = f.legajo && f.from && f.to >= f.from && (!hours || requestMinutes(f) > 0);
   const bal = emp && f.type === VACATION ? vacationBalance(emp, state.leaves.filter((l) => l.id !== request.id), Number(f.from.slice(0, 4))) : null;
   const group = emp && (state.vacGroups || []).find((g) => g.id === emp.vacGroup);
+
+  // Vacaciones que superan los días que le quedan: se puede dividir en vacaciones + licencia sin goce de sueldo.
+  const room = emp && f.type === VACATION && valid ? vacationRoom(state, { ...f, id: request.id }) : null;
+  const fmtK = (k) => k.split('-').reverse().join('/');
+  const split = () => {
+    const vacTo = room.left > 0 ? addDays(f.from, room.left - 1) : null;
+    const unpaidFrom = vacTo ? addDays(vacTo, 1) : f.from;
+    const base = { legajo: f.legajo, status: f.status, startTime: '', endTime: '', exception: false };
+    const note = (t) => [t, f.note].filter(Boolean).join(' · ');
+    if (vacTo) {
+      const vac = { ...base, type: VACATION, from: f.from, to: vacTo, note: note(`Sigue con licencia sin goce de sueldo hasta el ${fmtK(f.to)}`) };
+      if (editing) updateLeave(request.id, vac); else addLeave(vac);
+      addLeave({ ...base, type: UNPAID, from: unpaidFrom, to: f.to, note: note(`Excede las vacaciones ${room.year} (le quedaban ${room.left} días)`) });
+    } else if (editing) updateLeave(request.id, { ...base, type: UNPAID, from: f.from, to: f.to, note: note(`Sin días de vacaciones disponibles en ${room.year}`) });
+    else addLeave({ ...base, type: UNPAID, from: f.from, to: f.to, note: note(`Sin días de vacaciones disponibles en ${room.year}`) });
+    toast(vacTo ? `Cargadas: ${room.left} días de vacaciones + ${room.extra} sin goce de sueldo` : 'Cargada como licencia sin goce de sueldo');
+    onClose();
+  };
 
   const save = (exception) => {
     const data = { ...f, to: hours ? f.from : f.to, exception: !!exception };
@@ -133,6 +151,20 @@ export default function RequestDialog({ request = {}, onClose, lockPerson = fals
           <div><span>Antigüedad</span><b>{fmtSeniority(seniority(emp.hireDate))}</b></div>
           <div><span>Grupo</span><b>{group ? `${group.name}${group.max > 0 ? ` (máx. ${group.max})` : ' (sin control)'}` : 'Sin grupo'}</b></div>
           {bal && <div><span>Vacaciones {f.from.slice(0, 4)}</span><b>{bal.corr ? `${bal.corr.days} corresponden · ${bal.approved + bal.pending} usados · ${bal.corr.days - bal.approved - bal.pending} disponibles` : 'Falta fecha de ingreso'}</b></div>}
+        </div>
+      )}
+      {room && room.extra > 0 && (
+        <div className="notice warn split-box">
+          <b>Supera los días de vacaciones.</b> Le {room.left === 1 ? 'queda 1 día' : `quedan ${room.left} días`} de {room.corr} en {room.year} y pide {room.want}.
+          {' '}Para que quede claro en la liquidación, podés dividirlo:
+          <div className="split-parts">
+            {room.left > 0 && <span><span className="tag vac">Vacaciones</span> {room.left} {room.left === 1 ? 'día' : 'días'} · {fmtK(f.from)} al {fmtK(addDays(f.from, room.left - 1))}</span>}
+            <span><span className="tag unpaid">Sin goce de sueldo</span> {room.extra} {room.extra === 1 ? 'día' : 'días'} · {fmtK(room.left > 0 ? addDays(f.from, room.left) : f.from)} al {fmtK(f.to)}</span>
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn primary sm" onClick={split}>{room.left > 0 ? `Dividir en ${room.left} + ${room.extra}` : 'Cargar como sin goce de sueldo'}</button>
+            <span className="small">o «Guardar» para cargarlo todo como vacaciones (queda como excepción).</span>
+          </div>
         </div>
       )}
       {editing && request.exception && <p className="notice small">Esta solicitud fue cargada como <b>excepción</b>. Si al guardar ya no hay problemas, deja de serlo.</p>}
