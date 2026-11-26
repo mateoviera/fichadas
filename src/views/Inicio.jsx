@@ -13,7 +13,6 @@ const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', '
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const MON3 = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const longDate = (k) => `${DAYS[weekday(k)]} ${Number(k.slice(8))} de ${MONTHS[Number(k.slice(5, 7)) - 1]}`;
-const greeting = () => { const h = new Date().getHours(); return h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches'; };
 
 /** Próxima fecha (desde hoy) en que se cumple un aniversario de `date` (AAAA-MM-DD). */
 function nextAnniversary(date, today) {
@@ -103,8 +102,7 @@ export default function Inicio() {
     <>
       <div className="page-head">
         <div>
-          <h2>{greeting()} 👋</h2>
-          <p>Hoy es {longDate(today)}. Este es el resumen del personal.</p>
+          <h2>Inicio</h2>
         </div>
       </div>
 
