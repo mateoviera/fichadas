@@ -521,3 +521,7 @@ table.people tr.clickable:hover td { background: var(--sunken); }
 .home-row-main { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; }
 .home-row-main b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
+
+/* Barra de búsqueda que queda visible al bajar (Horarios). */
+.sticky-tools { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 4; box-shadow: 0 4px 14px rgb(0 0 0 / .06); }
+@media (max-width: 900px) { .sticky-tools { top: calc(env(safe-area-inset-top, 0px) + 60px); } }

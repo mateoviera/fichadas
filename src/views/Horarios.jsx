@@ -22,8 +22,28 @@ export default function Horarios() {
     input.focus({ preventScroll: true });
     input.select();
   }, [fresh]);
+  const [q, setQ] = useState('');
+  const [typeF, setTypeF] = useState('');
+  const [unused, setUnused] = useState(false);
   const rank = (id) => { const i = fresh.indexOf(id); return i < 0 ? Infinity : i; };
-  const list = [...state.schedules].sort((a, b) => rank(a.id) - rank(b.id));
+  // Personas por horario, para buscar «el horario de Brenta».
+  const people = {};
+  Object.values(state.employees).forEach((e) => e.scheduleId && (people[e.scheduleId] ||= []).push(e.name || `Leg. ${e.legajo}`));
+  const norm = (x) => String(x || '').toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  const matchPeople = (s) => (people[s.id] || []).filter((n) => words.every((w) => norm(n).includes(w)));
+  const matches = (s) => {
+    if (fresh.includes(s.id)) return true;
+    if (typeF && s.type !== typeF) return false;
+    if (unused && usage[s.id]) return false;
+    if (!words.length) return true;
+    const hay = norm(`${s.name} ${s.blocks.map((b) => `${b.start} ${b.end}`).join(' ')}`);
+    return words.every((w) => hay.includes(w)) || matchPeople(s).length > 0;
+  };
+  const list = state.schedules
+    .filter(matches)
+    .sort((a, b) => rank(a.id) - rank(b.id) || (a.name || '').localeCompare(b.name || '', 'es'));
+  const filtering = words.length || typeF || unused;
 
   return (
     <>
@@ -37,9 +57,39 @@ export default function Horarios() {
           <button className="btn primary" onClick={() => create('fijo')}>Nuevo horario fijo</button>
         </div>
       </div>
+      <div className="panel panel-pad toolbar sticky-tools">
+        <input
+          id="h-q"
+          className="input grow"
+          type="search"
+          placeholder="Buscar por nombre del horario, persona u hora (ej.: cocina, Brenta, 08:30)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setQ('')}
+        />
+        <div className="seg" role="group" aria-label="Tipo">
+          {[['', 'Todos'], ['fijo', 'Fijos'], ['rotativo', 'Rotativos']].map(([k, l]) => <button key={k} aria-pressed={typeF === k} onClick={() => setTypeF(k)}>{l}</button>)}
+        </div>
+        <label className="row small"><input id="h-unused" type="checkbox" checked={unused} onChange={(e) => setUnused(e.target.checked)} /> Sin personas asignadas</label>
+        <span className="muted small">{filtering ? `${list.length} de ${state.schedules.length}` : `${state.schedules.length} horarios`}</span>
+      </div>
       <div className="stack">
-        {list.map((s) => <ScheduleCard key={s.id} s={s} used={usage[s.id] || 0} establishments={state.establishments} isNew={fresh.includes(s.id)} />)}
+        {list.map((s) => {
+          const who = words.length ? matchPeople(s) : [];
+          return (
+            <div key={s.id} className="stack" style={{ gap: 4 }}>
+              {who.length > 0 && <span className="small muted">Asignado a {who.join(', ')}</span>}
+              <ScheduleCard s={s} used={usage[s.id] || 0} establishments={state.establishments} isNew={fresh.includes(s.id)} />
+            </div>
+          );
+        })}
         {!state.schedules.length && <div className="panel empty">No hay horarios. Creá el primero.</div>}
+        {state.schedules.length > 0 && !list.length && (
+          <div className="panel empty">
+            Ningún horario coincide con la búsqueda.
+            <button className="btn sm" onClick={() => { setQ(''); setTypeF(''); setUnused(false); }}>Limpiar filtros</button>
+          </div>
+        )}
       </div>
     </>
   );
