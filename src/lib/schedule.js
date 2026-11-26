@@ -29,7 +29,7 @@ export function blockText(b, estName) {
 /** Lista de renglones legibles de un horario. */
 export function scheduleLines(sch, estName) {
   if (!sch) return [];
-  if (sch.type === 'rotativo') return [`Rotativo: ${sch.blocks.map((b) => blockText(b)).join(' · ')}`];
+  if (sch.type === 'rotativo') return [`Rotativo: ${sch.blocks.map((b) => blockText(b, estName)).join(' · ')}`];
   return sch.blocks.map((b) => `${daysText(b.days)} ${blockText(b, estName)}`);
 }
 

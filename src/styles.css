@@ -212,6 +212,10 @@ td.nowrap, th.nowrap { white-space: nowrap; }
 .kv { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
 .kv b { color: var(--ink); font-weight: 500; }
 
+.panel-new { box-shadow: 0 0 0 2px var(--accent); }
+.emp-sched { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 10px 14px 0; }
+.emp-sched ul.plain { flex: 1; display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 6px; margin: 0; padding: 0; list-style: none; }
+.emp-sched ul.plain li { background: var(--sunken); border-radius: 6px; padding: 2px 8px; }
 .block-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
 .block-row:first-child { border-top: 0; }
 .arrow { color: var(--muted); font-family: var(--font-mono); }

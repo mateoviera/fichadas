@@ -7,6 +7,7 @@ import { download, toCSV } from '../lib/io.js';
 import { RowPills, EstSelect, useToast, TimeInput, Help } from '../components/ui.jsx';
 import EmployeeDrawer from './EmployeeDrawer.jsx';
 import Planilla from './Planilla.jsx';
+import { scheduleLines } from '../lib/schedule.js';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const monthLabel = (m) => `${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
@@ -98,7 +99,7 @@ export default function Reporte() {
         <div className="row no-print">
           <a className="btn" href="#archivos">Cargar archivos del reloj</a>
           <button className="btn" onClick={exportXlsx} disabled={!report.list.length}>Excel</button>
-          <button className="btn" onClick={exportCsv} disabled={!report.list.length}>CSV</button>
+          {/* <button className="btn" onClick={exportCsv} disabled={!report.list.length}>CSV</button> */}
           <button className="btn" onClick={printPdf} disabled={!report.list.length} title="Listado de todas las personas filtradas">Imprimir listado</button>
           <button className="btn" onClick={() => setSheets(report.list)} disabled={!report.list.length} title="Una hoja por persona, con totales y firmas">Planillas por persona</button>
         </div>
@@ -219,6 +220,14 @@ function EmployeeBlock({ x, open, onToggle, onDetail, onPrint, state }) {
       </button>
       {open && (
         <div className="emp-body">
+          {sch && (
+            <div className="emp-sched small">
+              <span className="muted">Horario:</span>
+              <ul className="plain">
+                {scheduleLines(sch, (id) => state.establishments[id]?.name || '?').map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+            </div>
+          )}
           <div className="hours">
             <div>
               <span>Horas trabajadas</span>

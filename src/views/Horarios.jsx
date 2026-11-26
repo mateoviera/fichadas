@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useStore, saveSchedule, newSchedule, deleteSchedule } from '../lib/store.js';
 import { blockDuration, endOffset } from '../lib/engine.js';
 import { fmtDuration, WEEKDAYS_LETTER, hmToMin } from '../lib/time.js';
@@ -10,6 +11,19 @@ export default function Horarios() {
   const state = useStore();
   const usage = {};
   Object.values(state.employees).forEach((e) => e.scheduleId && (usage[e.scheduleId] = (usage[e.scheduleId] || 0) + 1));
+  // Los horarios creados en esta visita se muestran primero, para editarlos sin bajar hasta el final.
+  const [fresh, setFresh] = useState([]);
+  const create = (type) => setFresh((f) => [newSchedule(type), ...f]);
+  useEffect(() => {
+    if (!fresh.length) return;
+    const input = document.getElementById(`sn-${fresh[0]}`);
+    if (!input) return;
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus({ preventScroll: true });
+    input.select();
+  }, [fresh]);
+  const rank = (id) => { const i = fresh.indexOf(id); return i < 0 ? Infinity : i; };
+  const list = [...state.schedules].sort((a, b) => rank(a.id) - rank(b.id));
 
   return (
     <>
@@ -19,19 +33,19 @@ export default function Horarios() {
           <p>Creá un horario una vez y asignalo a varias personas. «Fijo» controla días y horas, y detecta ausencias. «Rotativo» es para enfermería: cada fichada se asocia al turno más cercano, incluido el nocturno que termina al día siguiente, y las horas esperadas del mes son del día 1 al anteúltimo menos 6 francos (1, 2, 1 y 2 por semana). Para guardias de 48 h elegí «egreso a los 2 días».</p>
         </div>
         <div className="row">
-          <button className="btn" onClick={() => newSchedule('rotativo')}>Nuevo rotativo</button>
-          <button className="btn primary" onClick={() => newSchedule('fijo')}>Nuevo horario fijo</button>
+          <button className="btn" onClick={() => create('rotativo')}>Nuevo rotativo</button>
+          <button className="btn primary" onClick={() => create('fijo')}>Nuevo horario fijo</button>
         </div>
       </div>
       <div className="stack">
-        {state.schedules.map((s) => <ScheduleCard key={s.id} s={s} used={usage[s.id] || 0} establishments={state.establishments} />)}
+        {list.map((s) => <ScheduleCard key={s.id} s={s} used={usage[s.id] || 0} establishments={state.establishments} isNew={fresh.includes(s.id)} />)}
         {!state.schedules.length && <div className="panel empty">No hay horarios. Creá el primero.</div>}
       </div>
     </>
   );
 }
 
-export function ScheduleCard({ s, used, establishments }) {
+export function ScheduleCard({ s, used, establishments, isNew }) {
   const set = (patch) => saveSchedule({ ...s, ...patch });
   const setBlock = (i, patch) => set({ blocks: s.blocks.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   const addBlock = () => {
@@ -41,8 +55,9 @@ export function ScheduleCard({ s, used, establishments }) {
   const weekly = s.type === 'fijo' ? s.blocks.reduce((a, b) => a + blockDuration(b) * (b.days || []).length, 0) : 0;
 
   return (
-    <div className="panel">
+    <div className={`panel ${isNew ? 'panel-new' : ''}`}>
       <div className="panel-head">
+        {isNew && <span className="pill info">Nuevo</span>}
         <input id={`sn-${s.id}`} className="input" style={{ fontWeight: 600, flex: '1 1 220px' }} value={s.name} onChange={(e) => set({ name: e.target.value })} />
         <div className="seg" role="group" aria-label="Tipo de horario">
           <button aria-pressed={s.type === 'fijo'} onClick={() => set({ type: 'fijo', blocks: s.blocks.map((b) => ({ days: [1, 2, 3, 4, 5], ...b })) })}>Fijo</button>

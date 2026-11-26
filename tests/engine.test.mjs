@@ -97,6 +97,16 @@ test('día sin egreso: no suma a trabajadas, va a horas sin fichada', () => {
   assert.equal(s.sinFichada, 480);
 });
 
+test('fichada en otro establecimiento que el del horario: cuenta igual para el turno', () => {
+  const sch = { id: 'cort', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:30', end: '12:30', est: 'B' }] };
+  const at = (h, m) => Date.UTC(2026, 9, 5, h, m) / 1000; // lunes 05/10/2026
+  const rows = analyzeEmployee({ punches: [{ e: 'A', t: at(8, 36) }, { e: 'A', t: at(12, 19) }], schedule: sch, from: '2026-10-05', to: '2026-10-05' });
+  assert.equal(rows.length, 1, rows.map(rowToText).join('\n'));
+  assert.ok(rows[0].inst, 'debe asociarse al turno');
+  assert.ok(!rows[0].issues.includes('fuera'));
+  assert.equal(rows[0].est, 'A');
+});
+
 test('turno incompleto + fichada suelta del mismo día: primera = ingreso, última = egreso', () => {
   const sch = { id: 'man', type: 'fijo', blocks: [{ days: [1, 2, 3, 4, 5], start: '08:00', end: '13:00' }] };
   const at = (h, m) => Date.UTC(2026, 7, 20, h, m) / 1000; // jueves 20/08/2026

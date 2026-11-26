@@ -92,7 +92,7 @@ export default function Personal() {
         </div>
         <div className="row">
           <button className="btn" onClick={() => fileRef.current.click()} title="Columnas: legajo, apellido, nombre, dni, cuil, puesto, sector, ingreso, baja, horario, telefono, email">Importar CSV</button>
-          <button className="btn" onClick={exportCsv} disabled={!list.length}>Exportar CSV</button>
+          {/* <button className="btn" onClick={exportCsv} disabled={!list.length}>Exportar CSV</button> */}
           <button className="btn primary" onClick={() => setAdding(true)}>Agregar persona</button>
           <input ref={fileRef} type="file" accept=".csv,.txt" hidden onChange={(e) => { e.target.files[0] && importCsv(e.target.files[0]); e.target.value = ''; }} />
         </div>

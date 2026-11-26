@@ -78,7 +78,7 @@ function CloudGate() {
       </Splash>
     );
   }
-  if (phase !== 'ready') return <Splash text="Cargando fichadas…" />;
+  if (phase !== 'ready') return <Splash text="Cargando..." />;
   return <Main user={session.user} />;
 }
 

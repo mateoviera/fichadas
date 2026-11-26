@@ -151,16 +151,21 @@ export function analyzeEmployee({ punches, schedule, settings = DEFAULT_SETTINGS
     return finish(rows, from, to);
   }
 
-  const estOk = (inst, p) => !inst.est || inst.est === p.e;
+  // El establecimiento del bloque es una preferencia, no un requisito: si la persona fichó en otro
+  // lugar, la fichada cuenta igual para ese turno. Solo desempata entre turnos igual de cercanos.
+  const estPenalty = (inst, p) => (inst.est && inst.est !== p.e ? 1 : 0);
 
   const bestStart = (p, exclude) => {
     let best = null;
     let bestD = Infinity;
+    let bestRank = Infinity;
     for (const inst of instancesAround(schedule, p.t)) {
-      if (matched.has(inst.key) || inst.key === exclude || !estOk(inst, p)) continue;
+      if (matched.has(inst.key) || inst.key === exclude) continue;
       const d = p.t - inst.start;
       if (d < -W || d > Math.min(W, inst.dur / 2)) continue;
-      if (Math.abs(d) < bestD) {
+      const rank = Math.abs(d) + estPenalty(inst, p);
+      if (rank < bestRank) {
+        bestRank = rank;
         bestD = Math.abs(d);
         best = inst;
       }
@@ -171,11 +176,14 @@ export function analyzeEmployee({ punches, schedule, settings = DEFAULT_SETTINGS
   const bestEnd = (p) => {
     let best = null;
     let bestD = Infinity;
+    let bestRank = Infinity;
     for (const inst of instancesAround(schedule, p.t)) {
-      if (matched.has(inst.key) || !estOk(inst, p)) continue;
+      if (matched.has(inst.key)) continue;
       const d = p.t - inst.end;
       if (d < -Math.min(W, inst.dur / 2) || d > W) continue;
-      if (Math.abs(d) < bestD) {
+      const rank = Math.abs(d) + estPenalty(inst, p);
+      if (rank < bestRank) {
+        bestRank = rank;
         bestD = Math.abs(d);
         best = inst;
       }
