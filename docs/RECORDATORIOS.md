@@ -2,11 +2,11 @@
 
 Todos los días a las **8:00 (hora argentina)** Vercel ejecuta `api/recordatorios.js`, que lee Supabase y manda por email:
 
-- tareas vencidas y tareas para hoy (y las de mañana, como aviso),
-- quién está ausente hoy,
-- solicitudes pendientes de aprobar.
+- tareas vencidas,
+- tareas para hoy,
+- tareas de mañana, como aviso.
 
-Si no hay tareas vencidas, ni para hoy, ni solicitudes por aprobar, **no se manda nada**.
+Si no hay tareas vencidas ni para hoy, **no se manda nada**.
 
 ## Configuración (una sola vez)
 

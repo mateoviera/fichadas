@@ -1,4 +1,4 @@
-// Función programada (Vercel Cron): todos los días manda por email el resumen de tareas y ausencias.
+// Función programada (Vercel Cron): todos los días manda por email el resumen de tareas pendientes.
 // Variables necesarias en Vercel → Settings → Environment Variables:
 //   VITE_SUPABASE_URL           (ya está: la URL del proyecto de Supabase)
 //   SUPABASE_SERVICE_ROLE_KEY   (Supabase → Project Settings → API → service_role; NUNCA en el navegador)
@@ -36,15 +36,13 @@ export default async function handler(req, res) {
   try {
     const db = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const today = todayInArgentina();
-    const [tasks, emps, leaves] = await Promise.all([
+    const [tasks, emps] = await Promise.all([
       readAll(db, 'tasks', 'id,legajo,text,due,note,done', (q) => q.eq('done', false)),
-      readAll(db, 'employees', 'legajo,name,exit_date'),
-      readAll(db, 'leaves', 'id,legajo,date_from,date_to,type,status,start_time,end_time', (q) => q.neq('status', 'rechazada').gte('date_to', today)),
+      readAll(db, 'employees', 'legajo,name'),
     ]);
     const digest = buildDigest({
       tasks: tasks.map((t) => ({ ...t, due: t.due || '' })),
-      employees: Object.fromEntries(emps.map((e) => [e.legajo, { name: e.name, exitDate: e.exit_date || '' }])),
-      leaves: leaves.map((l) => ({ id: l.id, legajo: l.legajo, from: l.date_from, to: l.date_to, type: l.type, status: l.status, startTime: l.start_time, endTime: l.end_time })),
+      employees: Object.fromEntries(emps.map((e) => [e.legajo, { name: e.name }])),
     }, today, env.APP_URL || (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : ''));
 
     if (url.searchParams.get('preview')) {

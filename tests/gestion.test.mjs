@@ -196,7 +196,7 @@ test('vacaciones que superan el saldo: se calcula cuánto queda y cuánto va sin
   assert.equal(detail.rows.find((r) => r[4] === 'Licencia sin goce de sueldo')[5], 'NO');
 });
 
-test('resumen diario por email: tareas vencidas, de hoy, ausentes y solicitudes', async () => {
+test('resumen diario por email: tareas vencidas, de hoy y de mañana (sin ausentes ni solicitudes)', async () => {
   const { buildDigest, todayInArgentina } = await import('../src/lib/digest.js');
   const data = {
     employees: { 100: { name: 'Brenta Patricio' }, 12: { name: 'Gómez Laura' } },
@@ -213,10 +213,10 @@ test('resumen diario por email: tareas vencidas, de hoy, ausentes y solicitudes'
   };
   const d = buildDigest(data, '2026-11-26', 'https://ejemplo.app');
   assert.equal(d.empty, false);
-  assert.deepEqual(d.counts, { overdue: 1, today: 1, tomorrow: 0, absent: 1, requests: 1 });
-  assert.match(d.subject, /1 vencida, 1 para hoy, 1 solicitud por aprobar/);
+  assert.deepEqual(d.counts, { overdue: 1, today: 1, tomorrow: 0 });
+  assert.match(d.subject, /1 vencida, 1 para hoy$/);
   assert.match(d.html, /Mandar planilla &lt;RRHH&gt;/);
-  assert.match(d.text, /Gómez Laura — Vacaciones hasta el 30\/11/);
+  assert.doesNotMatch(d.text, /Gómez Laura|Ausentes|Solicitudes/);
   assert.equal(buildDigest({ tasks: [data.tasks[3]], leaves: [], employees: {} }, '2026-11-26').empty, true);
   assert.equal(todayInArgentina(new Date('2026-11-27T02:30:00Z')), '2026-11-26');
 });
