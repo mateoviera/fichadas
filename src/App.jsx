@@ -158,7 +158,7 @@ function Main({ user }) {
       </aside>
       <div className="content">
         <SyncError />
-        <main>
+        <main key={tab}>
           {tab === 'inicio' && <Inicio />}
           {tab === 'personal' && <Personal />}
           {tab === 'fichadas' && <Reporte />}
