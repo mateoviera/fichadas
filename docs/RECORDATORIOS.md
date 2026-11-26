@@ -11,7 +11,7 @@ Si no hay tareas vencidas ni para hoy, **no se manda nada**.
 ## Configuración (una sola vez)
 
 1. **Resend** (envío de mails, gratis hasta 100 por día): crear cuenta en https://resend.com con el email donde querés recibir los avisos → *API Keys* → *Create API Key* (permiso *Sending access*). Copiá la clave (empieza con `re_`).
-2. **Supabase** → *Project Settings* → *API* → copiá la clave **service_role** (la secreta, no la *anon*). Sirve para que la función lea los datos sin iniciar sesión. Nunca la pongas en la app ni la compartas.
+2. **Supabase** → *Project Settings* → *API Keys* → copiá una **Secret key** (`sb_secret_...`; o la `service_role` de *Legacy API Keys*). Y en *SQL Editor* corré `supabase/migrations/20261127000000_service_role.sql` para darle permiso de lectura. Sirve para que la función lea los datos sin iniciar sesión. Nunca la pongas en la app ni la compartas.
 3. **Vercel** → el proyecto → *Settings* → *Environment Variables* → agregá, para *Production*:
 
 | Variable | Valor |
