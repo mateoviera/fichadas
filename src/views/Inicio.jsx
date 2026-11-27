@@ -64,6 +64,94 @@ function TypeSummary({ leaves }) {
   );
 }
 
+/* ---------------- Widgets personalizables ---------------- */
+
+const WIDGET_NAMES = {
+  stats: 'Tarjetas de resumen', calendar: 'Calendario', quick: 'Accesos rápidos', tasks: 'Mis tareas', requests: 'Solicitudes por resolver',
+  missing: 'Datos para completar', staff: 'Estado del personal', events: 'Próximos eventos', celebs: 'Próximas celebraciones',
+};
+const COLS = ['left', 'center', 'right'];
+export const DEFAULT_LAYOUT = { cols: { left: ['calendar', 'quick'], center: ['tasks', 'requests', 'missing'], right: ['staff', 'events', 'celebs'] }, hidden: [] };
+const LAYOUT_KEY = 'gp:inicio-layout';
+
+/** Lee el orden guardado en este navegador; los widgets nuevos se agregan en su columna de siempre. */
+function loadLayout() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LAYOUT_KEY)); } catch { /* sin almacenamiento */ }
+  if (!saved?.cols) return DEFAULT_LAYOUT;
+  const known = new Set(Object.keys(WIDGET_NAMES));
+  const cols = Object.fromEntries(COLS.map((c) => [c, (saved.cols[c] || []).filter((id) => known.has(id) && id !== 'stats')]));
+  const placed = new Set(Object.values(cols).flat());
+  for (const c of COLS) for (const id of DEFAULT_LAYOUT.cols[c]) if (!placed.has(id)) cols[c].push(id);
+  return { cols, hidden: (saved.hidden || []).filter((id) => known.has(id)) };
+}
+function saveLayout(l) {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(l)); } catch { /* sin almacenamiento */ }
+}
+
+/** Acomoda los widgets en tres columnas según el orden elegido; en modo edición muestra flechas y ocultar/mostrar. */
+function Dashboard({ widgets, layout, setLayout, editing }) {
+  const hidden = new Set(layout.hidden);
+  const toggle = (id) => setLayout({ ...layout, hidden: hidden.has(id) ? layout.hidden.filter((x) => x !== id) : [...layout.hidden, id] });
+  const move = (id, col, dir) => {
+    const cols = Object.fromEntries(COLS.map((c) => [c, [...layout.cols[c]]]));
+    const i = cols[col].indexOf(id);
+    if (dir === 'up' || dir === 'down') {
+      const j = dir === 'up' ? i - 1 : i + 1;
+      if (j < 0 || j >= cols[col].length) return;
+      [cols[col][i], cols[col][j]] = [cols[col][j], cols[col][i]];
+    } else {
+      const to = COLS[COLS.indexOf(col) + (dir === 'left' ? -1 : 1)];
+      if (!to) return;
+      cols[col].splice(i, 1);
+      cols[to].push(id);
+    }
+    setLayout({ ...layout, cols });
+  };
+  const tools = (id, col, i, n) => (
+    <div className="wtools">
+      <b>{WIDGET_NAMES[id]}</b>
+      <span className="spacer" />
+      {col && <>
+        <button className="btn sm ghost" disabled={col === 'left'} onClick={() => move(id, col, 'left')} aria-label="A la columna de la izquierda">←</button>
+        <button className="btn sm ghost" disabled={i === 0} onClick={() => move(id, col, 'up')} aria-label="Subir">↑</button>
+        <button className="btn sm ghost" disabled={i === n - 1} onClick={() => move(id, col, 'down')} aria-label="Bajar">↓</button>
+        <button className="btn sm ghost" disabled={col === 'right'} onClick={() => move(id, col, 'right')} aria-label="A la columna de la derecha">→</button>
+      </>}
+      <button className="btn sm soft" onClick={() => toggle(id)}>{hidden.has(id) ? 'Mostrar' : 'Ocultar'}</button>
+    </div>
+  );
+  const item = (id, col, i, n) => {
+    if (!editing) return hidden.has(id) || !widgets[id] ? null : <div key={id}>{widgets[id]}</div>;
+    return (
+      <div key={id} className={`wbox ${hidden.has(id) ? 'off' : ''}`}>
+        {tools(id, col, i, n)}
+        <div className="wbox-body">{widgets[id] || <div className="panel home-empty">Ahora no hay nada para mostrar acá.</div>}</div>
+      </div>
+    );
+  };
+  const visible = (c) => layout.cols[c].filter((id) => editing || (!hidden.has(id) && widgets[id]));
+  const shown = COLS.filter((c) => editing || visible(c).length);
+  const width = { left: '280px', center: 'minmax(0, 1fr)', right: '320px' };
+  const flex = !shown.includes('center');
+  const wide = shown.map((c) => (flex ? 'minmax(0, 1fr)' : width[c])).join(' ');
+  const md = shown.filter((c) => c !== 'left').map((c) => (c === 'right' && shown.includes('center') ? '320px' : 'minmax(0, 1fr)')).join(' ') || 'minmax(0, 1fr)';
+
+  return (
+    <>
+      {(editing || !hidden.has('stats')) && item('stats', null, 0, 1)}
+      <div className="dash" style={{ '--dash-wide': wide, '--dash-md': md }}>
+        {shown.map((c) => (
+          <div key={c} className={c === 'left' ? 'dash-left' : ''}>
+            {visible(c).map((id, i, arr) => item(id, c, i, arr.length))}
+            {editing && !layout.cols[c].length && <div className="wbox-empty">Columna vacía: traé un recuadro con ← o →.</div>}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 /** Pantalla de inicio: widgets con lo que hay que mirar hoy y accesos a cada sección. */
 export default function Inicio() {
   const state = useStore();
@@ -73,6 +161,9 @@ export default function Inicio() {
   const [task, setTask] = useState(null);
   const [request, setRequest] = useState(null);
   const [quick, setQuick] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [layout, setLayoutState] = useState(loadLayout);
+  const setLayout = (next) => { setLayoutState(next); saveLayout(next); };
 
   const emps = state.employees;
   const active = useMemo(() => Object.values(emps).filter((e) => !e.exitDate || e.exitDate > today), [emps, today]);
@@ -138,19 +229,33 @@ export default function Inicio() {
           <h2>Inicio</h2>
           <p>{longDate(today).replace(/^./, (c) => c.toUpperCase())}</p>
         </div>
+        <div className="row">
+          {editing && <button className="btn ghost" onClick={() => setLayout(DEFAULT_LAYOUT)}>Restablecer</button>}
+          <button className={`btn ${editing ? 'primary' : 'soft'}`} onClick={() => setEditing((v) => !v)}>
+            <Icon name={editing ? 'check' : 'sliders'} size={15} />{editing ? 'Listo' : 'Personalizar'}
+          </button>
+        </div>
       </div>
+      {editing && <div className="notice small">Mové cada recuadro con las flechas (↑ ↓ dentro de la columna, ← → a otra columna) y ocultá los que no uses. Se guarda en este navegador.</div>}
 
+      {/* Cada widget por separado: se pueden ocultar y mover (se guarda en este navegador). */}
+      <Dashboard
+        editing={editing}
+        layout={layout}
+        setLayout={setLayout}
+        widgets={{
+          stats: (
       <div className="home-stats">
         {stat('#tareas', 'check', 'Tareas para hoy', overdue + forToday, overdue ? `${overdue} vencida${overdue === 1 ? '' : 's'}` : `${tasks.length} pendientes en total`, overdue ? 'bad' : forToday ? 'warn' : '')}
         {stat('#solicitudes', 'plane', 'Ausentes hoy', absentToday.filter(isFullDay).length, absentToday.length ? [...new Set(absentToday.map((l) => shortType(l.type).toLowerCase()))].join(', ').replace(/^./, (c) => c.toUpperCase()) : 'Nadie falta hoy')}
         {stat('#solicitudes', 'inbox', 'Solicitudes por resolver', pendingReq.length, 'Pendientes de aprobar', pendingReq.length ? 'warn' : '')}
         {stat('#personal', 'users', 'Personal activo', active.length, lastPunchDay ? `Fichadas hasta el ${fmtDate(lastPunchDay)}` : 'Todavía no hay fichadas')}
       </div>
-
-      <div className="dash">
-        {/* Columna izquierda: calendario y accesos */}
-        <div className="dash-left">
+),
+          calendar: (
           <MiniCalendar state={state} today={today} isActive={isActive} onRequest={(d) => setRequest({ from: d, to: d })} onPerson={setPerson} />
+),
+          quick: (
           <section className="panel widget">
             <div className="widget-head"><h3>Accesos rápidos</h3></div>
             <div className="widget-body quick-grid">
@@ -160,10 +265,8 @@ export default function Inicio() {
               <a className="quick" href="#horarios"><Icon name="sliders" /><span>Horarios</span></a>
             </div>
           </section>
-        </div>
-
-        {/* Columna central: tareas y solicitudes con acciones */}
-        <div>
+),
+          tasks: (
           <section className="panel widget">
             <div className="widget-head">
               <h3>Mis tareas</h3>
@@ -199,6 +302,8 @@ export default function Inicio() {
             {urgent.length > 8 && <a className="home-foot" href="#tareas">y {urgent.length - 8} más…</a>}
           </section>
 
+),
+          requests: (
           <section className="panel widget">
             <div className="widget-head">
               <h3>Solicitudes por resolver</h3>
@@ -222,7 +327,8 @@ export default function Inicio() {
             {pendingReq.length > 6 && <a className="home-foot" href="#solicitudes">y {pendingReq.length - 6} más…</a>}
           </section>
 
-          {missing.length > 0 && (
+),
+          missing: missing.length > 0 && (
             <section className="panel widget">
               <div className="widget-head"><h3>Datos para completar</h3><a href="#personal">Ir a personal</a></div>
               <div className="widget-body">
@@ -234,11 +340,8 @@ export default function Inicio() {
                 ))}
               </div>
             </section>
-          )}
-        </div>
-
-        {/* Columna derecha: estado del personal, eventos y celebraciones */}
-        <div>
+          ),
+          staff: (
           <section className="panel widget">
             <div className="widget-head"><h3>Estado del personal</h3></div>
             <div className="widget-body">
@@ -259,6 +362,8 @@ export default function Inicio() {
             </div>
           </section>
 
+),
+          events: (
           <section className="panel widget">
             <div className="widget-head"><h3>Próximos eventos</h3></div>
             <div className="widget-body">
@@ -271,6 +376,8 @@ export default function Inicio() {
             </div>
           </section>
 
+),
+          celebs: (
           <section className="panel widget">
             <div className="widget-head"><h3>Próximas celebraciones</h3></div>
             <div className="widget-body">
@@ -288,8 +395,9 @@ export default function Inicio() {
               ) : <p className="muted small">No hay cumpleaños ni aniversarios en los próximos 30 días.</p>}
             </div>
           </section>
-        </div>
-      </div>
+),
+        }}
+      />
 
       {task && <TaskDialog task={task} onClose={() => setTask(null)} />}
       {request && <RequestDialog request={request} onClose={() => setRequest(null)} />}

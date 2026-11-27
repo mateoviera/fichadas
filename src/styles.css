@@ -673,8 +673,8 @@ h2 { font-size: 22px; font-weight: 650; }
 .person-cell { display: flex; align-items: center; gap: 10px; }
 
 /* Inicio: widgets */
-.dash { display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
-@media (max-width: 1280px) { .dash { grid-template-columns: minmax(0, 1fr) 320px; } .dash > .dash-left { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+.dash { display: grid; grid-template-columns: var(--dash-wide, 280px minmax(0, 1fr) 320px); gap: 16px; align-items: start; }
+@media (max-width: 1280px) { .dash { grid-template-columns: var(--dash-md, minmax(0, 1fr) 320px); } .dash > .dash-left { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
 @media (max-width: 900px) { .dash { grid-template-columns: minmax(0, 1fr); } }
 .dash > div { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .widget { overflow: hidden; }
@@ -789,3 +789,18 @@ kbd { font: 500 10.5px var(--font-mono); padding: 2px 5px; border-radius: 5px; b
 .split-parts .tag { margin-right: 4px; }
 .liq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .liq .input { width: auto; }
+
+/* Copiar horario para WhatsApp */
+.copy-box { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--sunken); }
+.copy-preview { margin: 0; white-space: pre-wrap; font: 13px/1.5 var(--font-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+
+/* Inicio personalizable */
+.wbox { display: flex; flex-direction: column; gap: 6px; border: 1.5px dashed var(--accent); border-radius: 16px; padding: 6px; background: var(--accent-soft); }
+.wbox.off { border-color: var(--line); background: var(--sunken); }
+.wbox.off .wbox-body { opacity: .4; pointer-events: none; max-height: 120px; overflow: hidden; }
+.wbox-body { pointer-events: none; }
+.wtools { display: flex; align-items: center; gap: 2px; padding: 0 4px; flex-wrap: wrap; }
+.wtools b { font-size: 12.5px; }
+.wtools .btn.sm { height: 26px; padding: 0 8px; }
+.wtools .btn:disabled { opacity: .3; }
+.wbox-empty { border: 1.5px dashed var(--line); border-radius: 14px; padding: 24px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }

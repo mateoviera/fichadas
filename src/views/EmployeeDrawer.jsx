@@ -5,7 +5,7 @@ import RequestDialog, { STATUS_LABEL } from '../components/RequestDialog.jsx';
 import { ScheduleCard } from './Horarios.jsx';
 import { fmtDate, fmtTime, dateKey, keyToTs, hmToMin, todayKey, fmtDuration } from '../lib/time.js';
 import { seniority, fmtSeniority, vacationBalance, fmtStamp, typeInfo, leaveLength, requestMinutes, isPaid, HOURS } from '../lib/personal.js';
-import { scheduleLines } from '../lib/schedule.js';
+import { scheduleLines, scheduleWhatsapp } from '../lib/schedule.js';
 import TaskDialog from '../components/TaskDialog.jsx';
 import TaskItem from '../components/TaskItem.jsx';
 import { taskCompare } from '../lib/tasks.js';
@@ -140,7 +140,37 @@ function Horario({ emp, state }) {
         </>
       )}
       {sch && used <= 1 && <ScheduleCard s={sch} used={used} establishments={state.establishments} />}
+      {sch && <CopySchedule text={scheduleWhatsapp(sch, emp.name, (id) => state.establishments[id]?.name || '')} />}
       <p className="muted small">Los modelos de horario compartidos se administran en Configuración → Horarios.</p>
+    </div>
+  );
+}
+
+/** Copia el horario con formato de WhatsApp (negritas y viñetas) para pegarlo en un chat. */
+function CopySchedule({ text }) {
+  const toast = useToast();
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Navegadores sin permiso de portapapeles: se copia con un campo oculto.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    toast('Horario copiado: pegalo en WhatsApp');
+  };
+  return (
+    <div className="panel copy-box">
+      <div className="row">
+        <b className="small">Para mandar por WhatsApp</b>
+        <span className="spacer" />
+        <button className="btn primary sm" onClick={copy}>Copiar horario</button>
+      </div>
+      <pre className="copy-preview">{text}</pre>
     </div>
   );
 }
