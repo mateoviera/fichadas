@@ -163,16 +163,7 @@ function CopySchedule({ text }) {
     }
     toast('Horario copiado: pegalo en WhatsApp');
   };
-  return (
-    <div className="panel copy-box">
-      <div className="row">
-        <b className="small">Para mandar por WhatsApp</b>
-        <span className="spacer" />
-        <button className="btn primary sm" onClick={copy}>Copiar horario</button>
-      </div>
-      <pre className="copy-preview">{text}</pre>
-    </div>
-  );
+  return <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={copy}>Copiar</button>;
 }
 
 function Solicitudes({ emp, state }) {

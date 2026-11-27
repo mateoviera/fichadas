@@ -790,9 +790,6 @@ kbd { font: 500 10.5px var(--font-mono); padding: 2px 5px; border-radius: 5px; b
 .liq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .liq .input { width: auto; }
 
-/* Copiar horario para WhatsApp */
-.copy-box { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--sunken); }
-.copy-preview { margin: 0; white-space: pre-wrap; font: 13px/1.5 var(--font-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 
 /* Inicio personalizable */
 .wbox { display: flex; flex-direction: column; gap: 6px; border: 1.5px dashed var(--accent); border-radius: 16px; padding: 6px; background: var(--accent-soft); }
