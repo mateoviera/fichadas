@@ -23,7 +23,7 @@ export default function Solicitudes() {
     <>
       <div className="page-head">
         <div>
-          <h2>Vacaciones y solicitudes</h2>
+          <h2>Licencias y permisos</h2>
           <p>Vacaciones, días particulares, licencias y permisos por horas. Dentro de cada grupo se controla que no falten más personas de las permitidas; si se pisan, tiene prioridad la de mayor antigüedad.</p>
         </div>
         <button className="btn primary" onClick={() => setDialog({})}>Nueva solicitud</button>

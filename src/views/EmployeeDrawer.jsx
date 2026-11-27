@@ -10,7 +10,7 @@ import TaskDialog from '../components/TaskDialog.jsx';
 import TaskItem from '../components/TaskItem.jsx';
 import { taskCompare } from '../lib/tasks.js';
 
-const TABS = [['datos', 'Datos'], ['horario', 'Horario'], ['solicitudes', 'Vacaciones y solicitudes'], ['tareas', 'Tareas'], ['manuales', 'Fichadas manuales']];
+const TABS = [['datos', 'Datos'], ['horario', 'Horario'], ['solicitudes', 'Licencias'], ['tareas', 'Tareas'], ['manuales', 'Fichadas manuales']];
 
 /** Separa "Apellido Nombre" cuando todavía no se cargaron por separado (solo para mostrar). */
 export function splitName(e) {

@@ -307,7 +307,7 @@ export default function Inicio() {
           <section className="panel widget">
             <div className="widget-head">
               <h3>Solicitudes por resolver</h3>
-              <a href="#solicitudes">Ir a vacaciones</a>
+              <a href="#solicitudes">Ir a licencias</a>
             </div>
             {pendingReq.length ? (
               <div className="task-list" style={{ borderTop: '1px solid var(--line)' }}>

@@ -32,11 +32,11 @@ La app tiene cuatro secciones:
 1. **Personal**: todo el personal con apellido, nombre, legajo, DNI, puesto, horario, antigüedad, grupo y **última modificación** (cuándo y quién). Se puede buscar, filtrar por sector o estado (activos / de baja), asignar en lote, importar y exportar CSV, agregar personas y abrir la **ficha** de cada una:
    - **Datos**: apellido y nombre por separado, DNI, CUIL, nacimiento, contacto, puesto, sector, fecha de ingreso (antigüedad) y de baja, grupo de vacaciones y notas.
    - **Horario**: elegir un modelo o crear un horario propio y editarlo ahí mismo.
-   - **Vacaciones y solicitudes**: saldo del año y solicitudes de la persona.
+   - **Licencias**: saldo de vacaciones del año y solicitudes de la persona.
    - **Fichadas manuales**: para olvidos o fallas del reloj.
    - Al pie: última modificación, **Dar de baja** (deja de aparecer en Fichadas) y **Eliminar**.
 2. **Fichadas**: elegí el mes, el establecimiento, el sector o el estado. Arriba se ven solo cinco números (cumplimiento, llegadas tarde, salidas antes de hora, falta entrada o salida, ausencias) con una explicación plegable. Al abrir una persona se ven sus horas (trabajadas, las que debía trabajar y la diferencia) y el detalle día por día. Exporta a Excel, CSV o PDF.
-3. **Vacaciones y solicitudes**: vacaciones, días particulares, francos, licencias y permisos por horas.
+3. **Licencias y permisos**: vacaciones, días particulares, francos, licencias (con y sin goce) y permisos por horas.
    - **Calendario** interactivo por grupo: tocá un día y después otro en la fila de una persona para cargar una solicitud; tocá una solicitud para verla o cambiarla. Cada grupo muestra cuántas personas faltan cada día contra el máximo permitido.
    - **Solicitudes**: lista con filtros, aprobar / rechazar y última modificación.
    - **Grupos**: cuántas personas pueden faltar a la vez (o «sin control»), con prioridad por antigüedad.
@@ -91,7 +91,7 @@ src/
   lib/personal.js   antigüedad, vacaciones (LCT), tipos de solicitud, superposición y avisos
   lib/schedule.js   textos legibles de los horarios
   components/       diálogos, ventana de solicitud y piezas comunes
-  views/            pantallas: Personal (y ficha), Fichadas, Vacaciones y solicitudes, Horarios, Archivos, Ajustes
+  views/            pantallas: Personal (y ficha), Fichadas, Licencias y permisos, Horarios, Archivos, Ajustes
   samples/          los dos TXT de ejemplo
 tests/              pruebas del motor con los TXT reales (npm test)
 ```

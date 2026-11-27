@@ -21,7 +21,7 @@ const NAV = [
   ['inicio', 'Inicio', 'home'],
   ['personal', 'Personal', 'users'],
   ['fichadas', 'Fichadas', 'clock'],
-  ['solicitudes', 'Vacaciones', 'calendar'],
+  ['solicitudes', 'Licencias', 'calendar'],
   ['tareas', 'Tareas', 'check'],
 ];
 const CONFIG = [
