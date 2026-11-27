@@ -161,7 +161,7 @@ function CopySchedule({ text }) {
       document.execCommand('copy');
       ta.remove();
     }
-    toast('Horario copiado: pegalo en WhatsApp');
+    toast('Horario copiado');
   };
   return <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={copy}>Copiar</button>;
 }
