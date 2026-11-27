@@ -174,7 +174,7 @@ test('un permiso por horas no excusa la ausencia del día', () => {
 
 test('vacaciones que superan el saldo: se calcula cuánto queda y cuánto va sin goce', async () => {
   const { vacationRoom } = await import('../src/lib/personal.js');
-  const { liquidacionSheets, unpaidSummary } = await import('../src/lib/liquidacion.js');
+  const { leavesSheet } = await import('../src/lib/liquidacion.js');
   const state = {
     employees: { 7: { legajo: '7', name: 'Prueba Ana', hireDate: '2023-01-10', cuil: '27-1-1' } },
     leaves: [
@@ -188,12 +188,11 @@ test('vacaciones que superan el saldo: se calcula cuánto queda y cuánto va sin
   assert.equal(room.left, 7);
   assert.equal(room.want, 14);
   assert.equal(room.extra, 7);
-  // En julio: 5 días sin goce (27 al 31); en agosto, 2.
-  assert.deepEqual(unpaidSummary(state, '2026-07'), { days: 5, people: 1 });
-  assert.deepEqual(unpaidSummary(state, '2026-08'), { days: 2, people: 1 });
-  const [summary, detail] = liquidacionSheets(state, '2026-07');
-  assert.deepEqual(summary.rows[1].slice(3, 5), [7, 5]);
-  assert.equal(detail.rows.find((r) => r[4] === 'Licencia sin goce de sueldo')[5], 'NO');
+  // Exportación: una fila por solicitud con días, si es con goce y la nota.
+  const sheet = leavesSheet(state, state.leaves);
+  assert.deepEqual(sheet.rows[0], ['Legajo', 'Apellido y nombre', 'Tipo', 'Desde', 'Hasta', 'Días', 'Con goce de sueldo', 'Nota', 'Estado']);
+  assert.deepEqual(sheet.rows[3].slice(2, 7), ['Licencia sin goce de sueldo', '27/07/2026', '02/08/2026', 7, 'No']);
+  assert.equal(sheet.rows[1][6], 'Sí');
 });
 
 test('resumen diario por email: tareas vencidas, de hoy y de mañana (sin ausentes ni solicitudes)', async () => {
