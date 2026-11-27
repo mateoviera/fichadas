@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { download } from '../lib/io.js';
 import { buildXlsx } from '../lib/xlsx.js';
-import { leavesSheet } from '../lib/liquidacion.js';
+import { monthSheet, monthLeaves } from '../lib/liquidacion.js';
 import { useStore, upsertEmployee, bulkAssign, updateLeave, saveVacGroup, deleteVacGroup } from '../lib/store.js';
 import { ConfirmButton, useToast, WarnDialog, Stamp, Help } from '../components/ui.jsx';
 import RequestDialog, { STATUS_LABEL } from '../components/RequestDialog.jsx';
@@ -238,9 +238,10 @@ function Lista({ onOpen }) {
   const pending = state.leaves.filter((l) => l.status === 'pendiente').length;
   const names = (set) => [...set].map((l) => emps[l]?.name || `#${l}`).join(', ');
 
+  const [xMonth, setXMonth] = useState(today.slice(0, 7));
+  const xCount = monthLeaves(state, xMonth).length;
   const exportXlsx = () => {
-    const rows = [...list].sort((a, b) => (emps[a.legajo]?.name || '').localeCompare(emps[b.legajo]?.name || '', 'es') || a.from.localeCompare(b.from));
-    download(`ausencias-${year}.xlsx`, buildXlsx([leavesSheet(state, rows)]));
+    download(`ausencias-${xMonth}.xlsx`, buildXlsx([monthSheet(state, xMonth)]));
     toast('Excel generado');
   };
 
@@ -271,8 +272,14 @@ function Lista({ onOpen }) {
           <option value="__none">Sin grupo</option>
         </select>
         <input id="l-q" className="input" placeholder="Buscar persona" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+
+      <div className="panel panel-pad toolbar">
+        <b>Exportar ausencias del mes</b>
+        <input id="x-month" type="month" className="input" value={xMonth} onChange={(e) => setXMonth(e.target.value || today.slice(0, 7))} aria-label="Mes" />
+        <span className="small muted">{xCount} {xCount === 1 ? 'ausencia aprobada' : 'ausencias aprobadas'}</span>
         <span className="spacer" />
-        <button className="btn" disabled={!list.length} onClick={exportXlsx} title="Excel con las solicitudes que se ven en la lista">Exportar</button>
+        <button className="btn primary" disabled={!xCount} onClick={exportXlsx}>Exportar</button>
       </div>
 
       <div className="panel">
